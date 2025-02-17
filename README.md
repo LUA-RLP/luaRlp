@@ -7,7 +7,7 @@ Zum Installieren des Pakets folgenden Code ausführen
 ```
 install.packages("remotes")
 
-install_github("derele/luaRlp")
+remotes::install_github("derele/luaRlp")
 ```
 
 Das Paket Laden mit
