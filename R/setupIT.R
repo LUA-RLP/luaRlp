@@ -55,10 +55,3 @@
                         "Viel Spaß bei wichtigen Amtsaufgaben in R!",
                         " \033[35m🦠\033[32m🏥")
 }
-
-
-
-
-hello <- function() {
-  print("Hello, world!")
-}
