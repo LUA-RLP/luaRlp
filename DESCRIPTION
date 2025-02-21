@@ -1,11 +1,15 @@
 Package: luaRlp
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Standardisation and analyses at the LUA RLP (IHIS Landau)
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
+Author: Emanuel Heitlinger, Anja Schoeps
+Maintainer: Emanuel Heitlinger <emanuel.heitlinger@lua.rlp.de>
+Description: The package standardises analyses, small support-datasets and 
+    processes for epidemiology, genomics the resulting integrated molecular 
+    surveillance.
 License: What license is it under?
 Encoding: UTF-8
 LazyData: true
+RoxygenNote: 7.3.2
+Imports: odbc, 
+    dplyr
