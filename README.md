@@ -14,3 +14,14 @@ Das Paket Laden mit
 ```
 library(luaRlp)
 ```
+
+Das Paket kann epidemiologische Daten aus SurvNet zu unseren Labornummern 
+hinzufügen. Dafür wird ein Export aus unserem LIMS benötigt. Dann lässt sich 
+der folgende Code ausführen: 
+
+
+```
+create_Epidata(LIMS_link_file = "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Export Merger/Import1.csv")
+```
+
+
