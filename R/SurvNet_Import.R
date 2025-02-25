@@ -15,6 +15,7 @@
 #'
 #' @importFrom readr write_csv
 #' @importFrom magrittr %>%
+#' @importFrom utils read.delim
 #'
 create_Epidata <- function(LIMS_link_file,
          out =
@@ -34,7 +35,6 @@ create_Epidata <- function(LIMS_link_file,
   writeLines(c("\ufeff"), out)
   readr::write_csv(Out_EpiDaten, out)
 }
-
 
 #' import_SurvNet
 #'
@@ -62,7 +62,7 @@ import_SurvNet <- function(){
   # Try running the query and ensure the connection is closed
   data <- tryCatch({
     dbGetQuery(myconn,
-               "SELECT DISTINCT [Data].[Version].[Token] AS 'Aktenzeichen' ,(SELECT I.ItemName FROM Meta.Catalogue2Item AS C2I INNER JOIN Meta.Item AS I ON C2I.IdItem = I.IdItem WHERE C2I.IdCatalogue = 1010 AND I.IdIndex = [Data].[Disease71].[ReportingCounty]) AS 'Meldelandkreis' ,[Data].[Disease71].[IdVersion], [Data].[Version].[IdType], [Data].[Version].[CodeRecordOwner] AS 'Eigentuemer', [Data].[Version].[IdRecord] AS 'IdRecord', [Data].[Disease71].[Sex] 'Geschlecht' , [Data].[Disease71].[ReportingDate] AS 'Meldedatum' , [Data].[Disease71].[MunicipalityKey] , [Data].[Disease71].[AgeComputed] , [Data].[Disease71].[StatusHospitalization] AS 'HospitalisierungStatus' , [Data].[Disease71].[StatusDeceased] AS 'VerstorbenStatus' ,ExPOI2.ExpKont1, ExPOI2.ExpSubKont1, ExPOI2.ExpLand1, ExPOI2.ExpBL1, ExPOI2.ExpLK1, ExPOI2.ExpKont2, ExOutInfo.AusbruchInfo_InterneRef FROM [Data].[Version] INNER JOIN [Data].[Disease71] ON [Data].[Version].[IdVersion] = [Data].[Disease71].[IdVersion] LEFT OUTER JOIN [Meta].[DayTable] DT1001 ON DT1001.IdDaySQL = CAST(CAST([Data].[Disease71].[ReportingDate] AS FLOAT) AS INT) LEFT OUTER JOIN [Meta].[DayTable] DT1110 ON DT1110.IdDaySQL = CAST(CAST([Data].[Disease71].[OnsetOfDisease] AS FLOAT) AS INT) Outer Apply Data.ExpandWithPlaceOfInfections2(Data.Version.IdVersion) ExPOI2 Outer Apply Data.ExpandWithOutbreakInfo ([Data].[Version].[IdVersion]) ExOutInfo WHERE (GETDATE() BETWEEN [Data].[Version].[ValidFrom] AND [Data].[Version].[ValidUntil]) AND ([Data].[Version].[IsActive] = 1) AND ([Data].[Version].[IdRecordType] = 1) AND (([Data].[Version].[IdType] IN (121,157,179,140,138))) AND (((DT1001.WeekYear>=2023)))")
+               "SELECT DISTINCT [Data].[Version].[Token] AS 'Aktenzeichen' , [Data].[Version].[IdType] AS 'Datensatzkategorie', (SELECT I.ItemName FROM Meta.Catalogue2Item AS C2I INNER JOIN Meta.Item AS I ON C2I.IdItem = I.IdItem WHERE C2I.IdCatalogue = 1010 AND I.IdIndex = [Data].[Disease71].[ReportingCounty]) AS 'Meldelandkreis' ,[Data].[Disease71].[IdVersion], [Data].[Version].[IdType], [Data].[Version].[CodeRecordOwner] AS 'Eigentuemer', [Data].[Version].[IdRecord] AS 'IdRecord', [Data].[Disease71].[Sex] 'Geschlecht' , [Data].[Disease71].[ReportingDate] AS 'Meldedatum' , [Data].[Disease71].[MunicipalityKey] , [Data].[Disease71].[AgeComputed] , [Data].[Disease71].[StatusHospitalization] AS 'HospitalisierungStatus' , [Data].[Disease71].[StatusDeceased] AS 'VerstorbenStatus' ,ExPOI2.ExpKont1, ExPOI2.ExpSubKont1, ExPOI2.ExpLand1, ExPOI2.ExpBL1, ExPOI2.ExpLK1, ExPOI2.ExpKont2, ExOutInfo.AusbruchInfo_InterneRef FROM [Data].[Version] INNER JOIN [Data].[Disease71] ON [Data].[Version].[IdVersion] = [Data].[Disease71].[IdVersion] LEFT OUTER JOIN [Meta].[DayTable] DT1001 ON DT1001.IdDaySQL = CAST(CAST([Data].[Disease71].[ReportingDate] AS FLOAT) AS INT) LEFT OUTER JOIN [Meta].[DayTable] DT1110 ON DT1110.IdDaySQL = CAST(CAST([Data].[Disease71].[OnsetOfDisease] AS FLOAT) AS INT) Outer Apply Data.ExpandWithPlaceOfInfections2(Data.Version.IdVersion) ExPOI2 Outer Apply Data.ExpandWithOutbreakInfo ([Data].[Version].[IdVersion]) ExOutInfo WHERE (GETDATE() BETWEEN [Data].[Version].[ValidFrom] AND [Data].[Version].[ValidUntil]) AND ([Data].[Version].[IsActive] = 1) AND ([Data].[Version].[IdRecordType] = 1) AND (([Data].[Version].[IdType] IN (121,157,179,140,138))) AND (((DT1001.WeekYear>=2023)))")
   },
   error = function(e) {
     message("Error: Failed to execute the SQL query. Check your syntax and connection.")
@@ -173,6 +173,10 @@ import_SurvNet <- function(){
     `Host Sex` = recode(.data$Geschlecht,
                         "1" = "male", "2" = "female", "3" = "non-binary",
                         "-1" = "unknown", "0" = "unknown"),
+    `Datensatzkategorie` = recode(.data$Datensatzkategorie,
+                        "121" = "EHEC", "138" = "Legionellose",
+                        "140" = "Listeriose", "157" = "Salmonellose",
+                        "179" = "MRSA"),
     `Country of Isolation` = "Germany"
   ) %>%
   rename(
@@ -181,10 +185,11 @@ import_SurvNet <- function(){
     `Host Age` = .data$AgeComputed
   ) %>%
   select(
-    .data$Aktenzeichen, .data$IdRecord, .data$`Collection Date`,
-    .data$`Collected By`, .data$Meldelandkreis,
+    .data$Aktenzeichen, .data$Datensatzkategorie, .data$IdRecord,
+    .data$`Collection Date`, .data$`Collected By`, .data$Meldelandkreis,
     .data$MunicipalityKey, .data$`Host Age`, .data$`Host Sex`,
     .data$Hospitalization, .data$Deceased, .data$Expositionsort,
     .data$Outbreak, .data$`Country of Isolation`, .data$`Lat/Long of Isolation`
   )
 }
+
