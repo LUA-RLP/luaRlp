@@ -180,7 +180,7 @@ import_SurvNet <- function(){
     `Project` = recode(.data$Datensatzkategorie,
                        "EHEC" = "Produktiv_EHEC",
                        "Legionellose" = "Produktiv_Legionella_pneumophila",
-                       "Listeriose" = "Prokuktiv_Listeria_monocytogenes",
+                       "Listeriose" = "Produktiv_Listeria_monocytogenes",
                        "Salmonellose" = "Produktiv_Salmonella_enterica",
                        "MRSA" = "Productiv_MRSA"),
     `Country of Isolation` = "Germany"
