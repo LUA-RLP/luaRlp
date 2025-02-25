@@ -182,7 +182,7 @@ import_SurvNet <- function(){
                        "Legionellose" = "Produktiv_Legionella_pneumophila",
                        "Listeriose" = "Produktiv_Listeria_monocytogenes",
                        "Salmonellose" = "Produktiv_Salmonella_enterica",
-                       "MRSA" = "Productiv_MRSA"),
+                       "MRSA" = "Produktiv_MRSA"),
     `Country of Isolation` = "Germany"
   ) %>%
   rename(
