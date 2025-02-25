@@ -2,7 +2,7 @@
 #' createEpidata
 #'
 #' @param LIMS_link_file The file (exported from our LIMS) associating our
-#' LUA Probennummern (3263-%) and SurvNet IDs (Aktenzeichen with licence plate
+#' LUA Probennummern (3263-) and SurvNet IDs (Aktenzeichen with licence plate
 #' prefix)
 #'
 #' @param out The output file in csv format (defaults to  SurvNetExport4RIDOM
@@ -177,6 +177,12 @@ import_SurvNet <- function(){
                         "121" = "EHEC", "138" = "Legionellose",
                         "140" = "Listeriose", "157" = "Salmonellose",
                         "179" = "MRSA"),
+    `Project` = recode(.data$Datensatzkategorie,
+                       "EHEC" = "Produktiv_EHEC",
+                       "Legionellose" = "Produktiv_Legionella_pneumophila",
+                       "Listeriose" = "Prokuktiv_Listeria_monocytogenes",
+                       "Salmonellose" = "Produktiv_Salmonella_enterica",
+                       "MRSA" = "Productiv_MRSA"),
     `Country of Isolation` = "Germany"
   ) %>%
   rename(
@@ -189,7 +195,8 @@ import_SurvNet <- function(){
     .data$`Collection Date`, .data$`Collected By`, .data$Meldelandkreis,
     .data$MunicipalityKey, .data$`Host Age`, .data$`Host Sex`,
     .data$Hospitalization, .data$Deceased, .data$Expositionsort,
-    .data$Outbreak, .data$`Country of Isolation`, .data$`Lat/Long of Isolation`
+    .data$Outbreak, .data$`Country of Isolation`, .data$`Lat/Long of Isolation`,
+    .data$Project
   )
 }
 
