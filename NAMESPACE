@@ -2,8 +2,10 @@
 
 export(create_Epidata)
 export(import_SurvNet)
+export(launch_count_lines)
 import(dplyr)
 import(odbc)
 importFrom(magrittr,"%>%")
 importFrom(readr,write_csv)
+importFrom(shiny,runApp)
 importFrom(utils,read.delim)
