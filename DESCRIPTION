@@ -15,4 +15,6 @@ RoxygenNote: 7.3.2
 Imports: odbc, 
     dplyr, 
     magrittr,
-    readr
+    readr, 
+    shiny,
+    DT
