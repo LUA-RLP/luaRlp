@@ -18,4 +18,6 @@ Imports: odbc,
     readr, 
     shiny,
     DT, 
-    tidyr
+    tidyr,
+    markdown,
+    rmarkdown
