@@ -8,12 +8,12 @@ source(file.path("R", "preprocess_data.R"))
 
 # UI
 ui <- fluidPage(
-  titlePanel("PCR Data Table with Background Colors"),
+  titlePanel("qPCR Evaluator"),
 
   # File Input
   sidebarLayout(
     sidebarPanel(
-      tags$p("Default files can be found at:"),
+      tags$p("Read csv files stored at:"),
       tags$p("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/qPCR_CSVs/"),
 
       fileInput("cov_file", "Upload CoV-2 File",
@@ -22,8 +22,11 @@ ui <- fluidPage(
 
       fileInput("flu_file", "Upload Flu-RSV File",
                 accept = c(".csv"),
-                placeholder = "Select a Flu-RSV CSV file")
-    ),
+                placeholder = "Select a Flu-RSV CSV file"),
+      hr(),
+      tags$a("How to generate CSVs for import", href = "info.html",
+             target = "_blank")  # Opens in new tab
+      ),
 
     mainPanel(
       DTOutput("table")

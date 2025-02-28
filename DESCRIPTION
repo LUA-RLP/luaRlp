@@ -17,4 +17,5 @@ Imports: odbc,
     magrittr,
     readr, 
     shiny,
-    DT
+    DT, 
+    tidyr
