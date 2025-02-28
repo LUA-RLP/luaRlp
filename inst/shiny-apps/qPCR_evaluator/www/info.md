@@ -1,5 +1,5 @@
 ---
-title: "info.md"
+title: "Input data for this App"
 output: html_document
 date: "2025-02-28"
 editor_options: 
@@ -9,12 +9,12 @@ editor_options:
 
 # About This App
 
-This Shiny app is designed for evaluating qPCR data. It currently yonly
-works for SURE COV-2 and INfA/B RSV data which com in two files:
+This Shiny app is designed for evaluating qPCR data. It currently only
+works for SURE COV-2 and INF A/B and RSV data, which comes in two files:
 
 ## Data Input
 
-Both should be stored in and read from
+Both files should be stored in and read from
 `O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/qPCR_CSVs/`
 
 ## How these CSVs are generated
