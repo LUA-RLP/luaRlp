@@ -21,8 +21,8 @@ create_Epidata <- function(LIMS_link_file,
          out =
            paste0("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/",
                   "SurvNetExport4RIDOM",
-                  format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), ".csv")
-
+                  format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), ".csv"),
+         problems = NULL
          ){
   SN <- import_SurvNet() %>%
     .combine_exposure() %>%

@@ -3,6 +3,7 @@
 export(create_Epidata)
 export(import_SurvNet)
 export(launch_count_lines)
+export(launch_qPCR_evaluator)
 export(launch_ridom_2_lims)
 import(dplyr)
 import(odbc)
