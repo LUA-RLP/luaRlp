@@ -1,10 +1,11 @@
 library(shiny)
 library(DT)  # For interactive tables
+library(readr) # Don't mess with colnames
 
 options(shiny.maxRequestSize = 500 * 1024^2)  # Allow up to 500 MB uploads
 
-wanted_columns_generic <- c("Perc..Good.Targets", "Avg..Coverage..Assembled.",
-                           "Approximated.Genome.Size..Mbases.", "Top.Species.Match.Identity",
+wanted_columns_generic <- c("Perc Good Targets", "Avg Coverage  Assembled.",
+                           "Approximated Genome Size  Mbases.", "Top Species Match Identity",
                            "Top.Species.Match", "Sample.ID", "Complex.Type",
                            "Sequencing.Run.ID", "N50..Assembled.")
 
@@ -42,8 +43,7 @@ server <- function(input, output, session) {
   # Reactive: Read uploaded CSV
   csv_data <- reactive({
     req(input$file)
-    read.delim(input$file$datapath, header = TRUE, stringsAsFactors = FALSE,
-               sep=";")
+    read_delim(input$file$datapath,  col_names = TRUE)
   })
 
   # Display first few rows of CSV
@@ -80,7 +80,7 @@ server <- function(input, output, session) {
       paste0("filtered_", input$file$name)
     },
     content = function(file) {
-      write.table(filtered_data(), file, row.names = FALSE, sep = ";")
+      write_excel_csv(filtered_data(), file, delim = ";")
     }
   )
 

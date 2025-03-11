@@ -20,4 +20,5 @@ Imports: odbc,
     DT, 
     tidyr,
     markdown,
-    rmarkdown
+    rmarkdown,
+    readr
