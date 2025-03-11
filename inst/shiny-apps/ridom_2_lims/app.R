@@ -80,7 +80,7 @@ server <- function(input, output, session) {
       paste0("filtered_", input$file$name)
     },
     content = function(file) {
-      write.csv2(filtered_data(), file, row.names = FALSE)
+      write.table(filtered_data(), file, row.names = FALSE, sep = ";")
     }
   )
 
