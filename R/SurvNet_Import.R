@@ -204,7 +204,7 @@ import_SurvNet <- function(){
       .data$Aktenzeichen, .data$IdRecord,
       .data$`Collection Date`, .data$`Collected By`, .data$Meldelandkreis,
       .data$MunicipalityKey, .data$`Host Age`, .data$`Host Sex`,
-      .data$Hospitalization, .data$Deceased, .data$Expositionsort,
+      .data$HospStatus, .data$Deceased, .data$Expositionsort,
       .data$Outbreak, .data$`Country of Isolation`,
       .data$`Lat/Long of Isolation`, .data$Project, .data$Host,
       .data$`Source type`, .data$`Source subtype`, .data$`Specimen type`
