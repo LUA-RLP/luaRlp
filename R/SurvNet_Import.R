@@ -161,42 +161,53 @@ import_SurvNet <- function(){
 .cleanup_RIDOM <- function(data){
 # Final dataset with cleaned and formatted variables
   data %>%
-  mutate(
-    Meldedatum = as.Date(.data$Meldedatum),
-    Outbreak = ifelse(!is.na(.data$AusbruchInfo_InterneRef), 1, 0),
-    Hospitalization = recode(.data$HospitalisierungStatus,
-                             "10" = "no", "20" = "yes", "-1" = "unknown",
-                             "0" = "not assessed"),
-    Deceased = recode(.data$VerstorbenStatus,
-                      "10" = "no", "20" = "yes", "-1" = "unknown",
-                      "0" = "not assessed"),
-    `Host Sex` = recode(.data$Geschlecht,
-                        "1" = "male", "2" = "female", "3" = "non-binary",
-                        "-1" = "unknown", "0" = "unknown"),
-    `Datensatzkategorie` = recode(.data$Datensatzkategorie,
-                        "121" = "EHEC", "138" = "Legionellose",
-                        "140" = "Listeriose", "157" = "Salmonellose",
-                        "179" = "MRSA"),
-    `Project` = recode(.data$Datensatzkategorie,
-                       "EHEC" = "Produktiv_EHEC",
-                       "Legionellose" = "Produktiv_Legionella_pneumophila",
-                       "Listeriose" = "Produktiv_Listeria_monocytogenes",
-                       "Salmonellose" = "Produktiv_Salmonella_enterica",
-                       "MRSA" = "Produktiv_MRSA"),
-    `Country of Isolation` = "Germany"
-  ) %>%
-  rename(
-    `Collection Date` = .data$Meldedatum,
-    `Collected By` = .data$Gesundheitsamt,
-    `Host Age` = .data$AgeComputed
-  ) %>%
-  select(
-    .data$Aktenzeichen, .data$Datensatzkategorie, .data$IdRecord,
-    .data$`Collection Date`, .data$`Collected By`, .data$Meldelandkreis,
-    .data$MunicipalityKey, .data$`Host Age`, .data$`Host Sex`,
-    .data$Hospitalization, .data$Deceased, .data$Expositionsort,
-    .data$Outbreak, .data$`Country of Isolation`, .data$`Lat/Long of Isolation`,
-    .data$Project
-  )
+    mutate(
+      Meldedatum = as.Date(.data$Meldedatum),
+      Outbreak = ifelse(!is.na(.data$AusbruchInfo_InterneRef), 1, 0),
+      HospStatus = recode(.data$HospitalisierungStatus,
+                          "10" = "no", "20" = "yes", "-1" = "unknown",
+                          "0" = "not assessed"),
+      Deceased = recode(.data$VerstorbenStatus,
+                        "10" = "no", "20" = "yes", "-1" = "unknown",
+                        "0" = "not assessed"),
+      `Host Sex` = recode(.data$Geschlecht,
+                          "1" = "male", "2" = "female", "3" = "non-binary",
+                          "-1" = "unknown", "0" = "unknown"),
+      `Datensatzkategorie` = recode(.data$Datensatzkategorie,
+                                    "121" = "EHEC", "138" = "Legionellose",
+                                    "140" = "Listeriose", "157" =
+                                      "Salmonellose",
+                                    "179" = "MRSA"),
+      `Project` = recode(.data$Datensatzkategorie,
+                         "EHEC" = "Produktiv_EHEC",
+                         "Legionellose" = "Produktiv_Legionella_pneumophila",
+                         "Listeriose" = "Produktiv_Listeria_monocytogenes",
+                         "Salmonellose" = "Produktiv_Salmonella_enterica",
+                         "MRSA" = "Produktiv_MRSA"),
+      `Country of Isolation` = "Germany"
+    ) %>%
+    mutate(## everywhere but Legionella human host as default
+      `Host` = ifelse(Datensatzkategorie != "Legionellose", "Homo sapiens",
+                      "NACHTRAGEN!"),
+      `Source type` = ifelse(Datensatzkategorie != "Legionellose",
+                           "clinical/host-associated",
+                           "NACHTRAGEN!"),
+      `Source subtype` = ifelse(Datensatzkategorie != "Legionellose", "human",
+                                "NACHTRAGEN!"),
+      `Specimen type` = "stool") %>%
+    rename(
+      `Collection Date` = .data$Meldedatum,
+      `Collected By` = .data$Gesundheitsamt,
+      `Host Age` = .data$AgeComputed
+    ) %>%
+    select(
+      .data$Aktenzeichen, .data$IdRecord,
+      .data$`Collection Date`, .data$`Collected By`, .data$Meldelandkreis,
+      .data$MunicipalityKey, .data$`Host Age`, .data$`Host Sex`,
+      .data$Hospitalization, .data$Deceased, .data$Expositionsort,
+      .data$Outbreak, .data$`Country of Isolation`,
+      .data$`Lat/Long of Isolation`, .data$Project, .data$Host,
+      .data$`Source type`, .data$`Source subtype`, .data$`Specimen type`
+    )
 }
 

@@ -7,12 +7,13 @@
 create_Epidata(
   LIMS_link_file,
   out = paste0("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/",
-    "SurvNetExport4RIDOM", format(Sys.time(), "\%Y-\%m-\%d_\%H-\%M-\%S"), ".csv")
+    "SurvNetExport4RIDOM", format(Sys.time(), "\%Y-\%m-\%d_\%H-\%M-\%S"), ".csv"),
+  problems = NULL
 )
 }
 \arguments{
 \item{LIMS_link_file}{The file (exported from our LIMS) associating our
-LUA Probennummern (3263-%) and SurvNet IDs (Aktenzeichen with licence plate
+LUA Probennummern (3263-) and SurvNet IDs (Aktenzeichen with licence plate
 prefix)}
 
 \item{out}{The output file in csv format (defaults to  SurvNetExport4RIDOM
