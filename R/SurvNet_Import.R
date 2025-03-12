@@ -19,7 +19,7 @@
 #'
 create_Epidata <- function(LIMS_link_file,
          out =
-           paste0("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/",
+           paste0("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Import/",
                   "SurvNetExport4RIDOM",
                   format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), ".csv"),
          problems = NULL
@@ -194,8 +194,14 @@ import_SurvNet <- function(){
                            "NACHTRAGEN!"),
       `Source subtype` = ifelse(Datensatzkategorie != "Legionellose", "human",
                                 "NACHTRAGEN!"),
-      `Specimen type` = "stool") %>%
+      `Specimen type` = ifelse(Datensatzkategorie == c("Salmonellose", "EHEC"),
+                               "stool",
+                               "NACHTRAGEN!")
+        ) %>%
     rename(
+      `Sample ID` = .data$Labornummer,
+      `Zip of Isolation` = .data$PLZ,
+      `Alias ID (s)` =.data$SurvNet.AZ,
       `Collection Date` = .data$Meldedatum,
       `Collected By` = .data$Gesundheitsamt,
       `Host Age` = .data$AgeComputed
