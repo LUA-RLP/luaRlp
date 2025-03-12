@@ -31,7 +31,11 @@ create_Epidata <- function(LIMS_link_file,
     .cleanup_RIDOM()
   IDs <- read.delim(LIMS_link_file, sep = ";")
   Out_EpiDaten <- inner_join(IDs, SN,
-                             by = c("SurvNet.AZ" = "Aktenzeichen"))
+                             by = c("SurvNet.AZ" = "Aktenzeichen")) %>%
+    ## rename variables coming from the LIMS merger!
+    rename(`Sample ID` = .data$Labornummer,
+           `Alias ID (s)` =.data$SurvNet.AZ,
+           `Zip of Isolation` = .data$PLZ)
   writeLines(c("\ufeff"), out)
   readr::write_csv(Out_EpiDaten, out)
 }
@@ -167,7 +171,7 @@ import_SurvNet <- function(){
       HospStatus = recode(.data$HospitalisierungStatus,
                           "10" = "no", "20" = "yes", "-1" = "unknown",
                           "0" = "not assessed"),
-      Deceased = recode(.data$VerstorbenStatus,
+      VerstorbenStatus = recode(.data$VerstorbenStatus,
                         "10" = "no", "20" = "yes", "-1" = "unknown",
                         "0" = "not assessed"),
       `Host Sex` = recode(.data$Geschlecht,
@@ -194,23 +198,19 @@ import_SurvNet <- function(){
                            "NACHTRAGEN!"),
       `Source subtype` = ifelse(Datensatzkategorie != "Legionellose", "human",
                                 "NACHTRAGEN!"),
-      `Specimen type` = ifelse(Datensatzkategorie == c("Salmonellose", "EHEC"),
+      `Specimen type` = ifelse(Datensatzkategorie %in% c("Salmonellose", "EHEC"),
                                "stool",
                                "NACHTRAGEN!")
         ) %>%
-    rename(
-      `Sample ID` = .data$Labornummer,
-      `Zip of Isolation` = .data$PLZ,
-      `Alias ID (s)` =.data$SurvNet.AZ,
-      `Collection Date` = .data$Meldedatum,
-      `Collected By` = .data$Gesundheitsamt,
-      `Host Age` = .data$AgeComputed
+    rename(`Collection Date` = .data$Meldedatum,
+           `Host Age` = .data$AgeComputed
     ) %>%
     select(
-      .data$Aktenzeichen, .data$IdRecord,
-      .data$`Collection Date`, .data$`Collected By`, .data$Meldelandkreis,
+      .data$Aktenzeichen,
+      .data$IdRecord,
+      .data$`Collection Date`, .data$Gesundheitsamt, .data$Meldelandkreis,
       .data$MunicipalityKey, .data$`Host Age`, .data$`Host Sex`,
-      .data$HospStatus, .data$Deceased, .data$Expositionsort,
+      .data$HospStatus, .data$VerstorbenStatus, .data$Expositionsort,
       .data$Outbreak, .data$`Country of Isolation`,
       .data$`Lat/Long of Isolation`, .data$Project, .data$Host,
       .data$`Source type`, .data$`Source subtype`, .data$`Specimen type`
