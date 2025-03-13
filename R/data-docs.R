@@ -41,3 +41,27 @@
 #' data(LKLatLong)
 #' head(LKLatLong)
 "LKLatLong"
+
+
+
+
+#' Landkreise und Gemeinden in Rheinland-Pfalz
+#'
+#' The shapes and names of Kreise and Gemeinden in Rheinland Pfalz
+#'
+#' @docType data
+#' @usage data(RLP_geo)
+#'
+#' @format A list with two geo-objects (Sf - Simple feature collections):
+#' \describe{
+#'   \item{Kreise}{Landkreise in Rheinland-Pfalz}
+#'   \item{Gemeinden}{Gemeinden in Rheinland-Pfalz}
+#'   }
+#' @source Compiled by Thomas Stelzer and Anja Schoeps
+#' @examples
+#' data(RLP_geo)
+#' head(RLP_geo[["Kreise"]])
+#' head(RLP_geo[["Gemeinden"]])
+"RLP_geo"
+
+

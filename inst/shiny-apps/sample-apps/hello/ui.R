@@ -4,19 +4,19 @@ library(shiny)
 shinyUI(pageWithSidebar(
 
   # Application title
-  headerPanel("Visualiersierung auf einer Karte - Demonstration mit simulierten Daten"),
+  headerPanel("Karte: eine simulierte Epidemie"),
 
-  # Sidebar with a slider input for number of observations
+  # Sidebar with a slider input for lambda (Poisson distribution parameter)
   sidebarPanel(
-    sliderInput("bins",
-                  "Number of bins:",
-                  min = 1,
-                  max = 50,
-                  value = 30)
+    sliderInput("lambda",
+                "Lambda (Poisson distribution):",
+                min = 1,
+                max = 50,
+                value = 30)
   ),
 
   # Show a plot of the generated distribution
   mainPanel(
-    plotOutput("distPlot", height=250)
+    plotOutput("geoPlot", height = 250)
   )
 ))
