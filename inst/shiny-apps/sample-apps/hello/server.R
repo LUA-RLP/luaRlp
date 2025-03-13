@@ -1,6 +1,7 @@
 library(shiny)
 library(sf)
 library(ggplot2)
+library(viridis)
 
 shinyServer(function(input, output) {
 
