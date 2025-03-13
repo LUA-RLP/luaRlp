@@ -24,4 +24,5 @@ Imports: odbc,
     rcmdcheck,
     readr,
     sf,
-    ggplot2
+    ggplot2,
+    viridis
