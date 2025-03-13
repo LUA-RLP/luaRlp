@@ -6,7 +6,7 @@ library(viridis)
 shinyServer(function(input, output) {
 
   output$geoPlot <- renderPlot({
-
+    data(RLP_geo)
     # Generate Poisson-distributed incidence values using user-selected lambda
     RLP_geo[["Kreise"]]$incidence <- rpois(nrow(RLP_geo[["Kreise"]]), lambda = input$lambda)
 
