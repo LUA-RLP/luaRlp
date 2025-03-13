@@ -1,7 +1,13 @@
+# R Nutzung am LUA RLP
+
+Unsere Web-Apps sind (nur) innerhalb des Netzwerkes des LUA RLP [unter dieser Adresse](http://srvldap0008.lua.rlp.de:3838/) zu finden.
+
 # R package luaRlp
 
-Zum Installieren des Pakets folgenden Code ausführen 
-(dies ist nur bei der ersten Installation oder bei Updates notwendig):
+Weiter Funktionen stehen für R-Nutzer innerhalb unsers Pakets zu Verfügung. 
+Nutzer, welche R-Code auch in der Kommandozeile ausführen möchsten, können zum 
+Installieren des Pakets folgenden Code ausführen (dies ist nur bei der ersten 
+Installation oder bei Updates notwendig):
 
 
 ```
@@ -15,7 +21,7 @@ Das Paket Laden mit
 library(luaRlp)
 ```
 
-Das Paket kann epidemiologische Daten aus SurvNet zu unseren Labornummern 
+Das Paket kann z.B. epidemiologische Daten aus SurvNet zu unseren Labornummern 
 hinzufügen. Dafür wird ein Export aus unserem LIMS benötigt. Dann lässt sich 
 der folgende Code ausführen: 
 
