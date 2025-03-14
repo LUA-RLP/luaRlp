@@ -9,7 +9,8 @@ create_Epidata(
   out =
     paste0("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Import/",
     "SurvNetExport4RIDOM", format(Sys.time(), "\%Y-\%m-\%d_\%H-\%M-\%S"), ".csv"),
-  problems = NULL
+  problems = NULL,
+  type_of_problem = "non-matching-LIMS"
 )
 }
 \arguments{
@@ -20,6 +21,14 @@ prefix)}
 \item{out}{The output file in csv format (defaults to  SurvNetExport4RIDOM
 plus the current timestamp wirtten into
 "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/")}
+
+\item{problems}{If problematic entries should be reported into a file
+(a filename or path to a file) should be given. Which entries are regarded as
+problematic are defined via type_of_problem}
+
+\item{type_of_problem}{should be "non-matching-LIMS". The currently only
+available option (also the current default) is to write non-matching LIMS
+entries to a file (given in the argument "problems").}
 }
 \value{
 Writes a file to out

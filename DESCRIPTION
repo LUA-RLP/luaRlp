@@ -22,7 +22,6 @@ Imports: odbc,
     markdown,
     rmarkdown,
     rcmdcheck,
-    readr,
     sf,
     ggplot2,
     viridis

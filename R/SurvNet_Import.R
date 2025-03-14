@@ -9,6 +9,14 @@
 #' plus the current timestamp wirtten into
 #' "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/")
 #'
+#' @param problems If problematic entries should be reported into a file
+#' (a filename or path to a file) should be given. Which entries are regarded as
+#' problematic are defined via type_of_problem
+#'
+#' @param type_of_problem should be "non-matching-LIMS". The currently only
+#' available option (also the current default) is to write non-matching LIMS
+#' entries to a file (given in the argument "problems").
+#'
 #' @return Writes a file to out
 #'
 #' @export
@@ -22,7 +30,8 @@ create_Epidata <- function(LIMS_link_file,
            paste0("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Import/",
                   "SurvNetExport4RIDOM",
                   format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), ".csv"),
-         problems = NULL
+         problems = NULL,
+         type_of_problem = "non-matching-LIMS"
          ){
   SN <- import_SurvNet() %>%
     .combine_exposure() %>%
@@ -38,6 +47,16 @@ create_Epidata <- function(LIMS_link_file,
            `Zip of Isolation` = .data$PLZ)
   writeLines(c("\ufeff"), out)
   readr::write_csv(Out_EpiDaten, out)
+  ### optinal reporting of a problems-file
+  if(!is.null(problems)){
+    if(type_of_problem %in%(c("non-matching-LIMS"))){
+      p <- IDs %>%
+        filter(!SurvNet.AZ %in% SN$Aktenzeichen)
+      readr::write_excel_csv2(p, problems)
+    }else{
+      stop("Choose a type of problem to report when requesting problems output")
+    }
+  }
 }
 
 #' import_SurvNet
