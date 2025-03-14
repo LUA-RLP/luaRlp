@@ -203,13 +203,13 @@ import_SurvNet <- function(){
                                "NACHTRAGEN!")
         ) %>%
     rename(`Collection Date` = .data$Meldedatum,
-           `Host Age` = .data$AgeComputed
+           `Host Age (years)` = .data$AgeComputed
     ) %>%
     select(
       .data$Aktenzeichen,
       .data$IdRecord,
       .data$`Collection Date`, .data$Gesundheitsamt, .data$Meldelandkreis,
-      .data$MunicipalityKey, .data$`Host Age`, .data$`Host Sex`,
+      .data$MunicipalityKey, .data$`Host Age (years)`, .data$`Host Sex`,
       .data$HospStatus, .data$VerstorbenStatus, .data$Expositionsort,
       .data$Outbreak, .data$`Country of Isolation`,
       .data$`Lat/Long of Isolation`, .data$Project, .data$Host,

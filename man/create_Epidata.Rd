@@ -6,7 +6,8 @@
 \usage{
 create_Epidata(
   LIMS_link_file,
-  out = paste0("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/",
+  out =
+    paste0("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Import/",
     "SurvNetExport4RIDOM", format(Sys.time(), "\%Y-\%m-\%d_\%H-\%M-\%S"), ".csv"),
   problems = NULL
 )
