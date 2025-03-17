@@ -36,7 +36,7 @@ ui <- fluidPage(
 
       actionButton("process", "Daten verarbeiten"),
       hr(),
-      tags$a("Erstellung der CSV-Dateien für den Import", href = "info.html",
+      tags$a("📌 Dokumentation: Erstellung der CSV-Dateien für den Import", href = "info.html",
              target = "_blank")
     ),
 

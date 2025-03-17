@@ -11,14 +11,14 @@ editor_options:
 
 Diese Shiny-App dient zur Auswertung von qPCR-Daten. Derzeit unterstützt
 sie entweder eine generelle Porzessierung ohne spezielle
-Spalten-Namen-Sortierung oder eine angepasste Sortierung für **SURE
-COV-2, INF A/B und RSV**. Die Daten können in einer Datei oder in zwei
-separaten Dateien vorliegen. Liegen die Daten in zwei Dateien vor,
-können sie (für passende Probennamen) zusammengeführt werden.
+Spalten-Namen-Sortierung oder eine angepasste Sortierung für SURE COV-2,
+INF A/B und RSV. Die Daten können in einer Datei oder in zwei separaten
+Dateien vorliegen. Liegen die Daten in zwei Dateien vor, können sie (für
+passende Probennamen) zusammengeführt werden.
 
 ### **Dateninput**
 
-Beide Dateien müssen im folgenden Verzeichnis gespeichert und von dort
+Dateien müssen im folgenden Verzeichnis gespeichert und von dort
 eingelesen werden:\
 📂 **O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/qPCR_CSVs/**
 
@@ -37,6 +37,9 @@ Um die Daten zu exportieren:
 
 3.  Konfigurieren Sie den Export entsprechend (Einstellungen wie
     abgebildet sollten Standard sein).
+
+4.  Speicher unter 📂 **O:/Abteilung Humanmedizin (AHM)/Referat
+    32/32_6/qPCR_CSVs/**
 
 ![Figure 1](figure1.png)
 
