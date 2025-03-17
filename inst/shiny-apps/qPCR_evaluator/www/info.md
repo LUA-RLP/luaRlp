@@ -7,35 +7,47 @@ editor_options:
     wrap: 72
 ---
 
-# About This App
+# **Über diese App**
 
-This Shiny app is designed for evaluating qPCR data. It currently only
-works for SURE COV-2 and INF A/B and RSV data, which comes in two files:
+Diese Shiny-App dient zur Auswertung von qPCR-Daten. Derzeit unterstützt
+sie ausschließlich Daten für **SURE COV-2, INF A/B und RSV**, die in
+zwei separaten Dateien vorliegen.
 
-## Data Input
+### **Dateninput**
 
-Both files should be stored in and read from
-`O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/qPCR_CSVs/`
+Beide Dateien müssen im folgenden Verzeichnis gespeichert und von dort
+eingelesen werden:\
+📂 **O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/qPCR_CSVs/**
 
-## How these CSVs are generated
+### **Erstellung der CSV-Dateien**
 
-Raw Bio-Rad qPCR files are found in:
-`H:\Analysenetz\NETLDAS0004_01\PCR Ergebnisse` and/or
-`H:\Analysenetz\NETLDAS0004\PCR Läufe\PCR Ergebnisse`. Open them (one
-after the other) with Bio-Rad CFX manager Software. Select "Export \>
-Custom Export..." Like this:. ![Figure 1](figure1.png)
+Die Rohdaten der Bio-Rad qPCR befinden sich in:\
+📂 **H:\\Analysenetz\\NETLDAS0004_01\\PCR Ergebnisse**\
+📂 **H:\\Analysenetz\\NETLDAS0004\\PCR Läufe\\PCR Ergebnisse**
+
+Um die Daten zu exportieren:
+
+1.   Öffnen Sie die Dateien **nacheinander** mit der **Bio-Rad CFX
+    Manager Software**.
+
+2.  Wählen Sie **"Export \> Custom Export..."**
+
+3.  Konfigurieren Sie den Export entsprechend (Einstellungen wie
+    abgebildet sollten Standard sein).
+
+![Figure 1](figure1.png)
 
 Then leave all the settings at default values. This should look like
 this:
 
-![Figure 2](figure2.png)
+![](figure2.png)
 
-Remember to save the CSVs at
-`O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/qPCR_CSVs/`!
+### **Anleitung zur Nutzung**
 
-## How to Use
+1️⃣ Wechseln Sie zum Tab **„Upload & Tabelle“**.\
+2️⃣ Wählen Sie Ihre **qPCR-Ergebnisdateien** aus und laden Sie sie hoch
+(**eine für COV-2, eine für Flu**).\
+3️⃣ Sehen Sie sich die Ergebnisse an und werten Sie die qPCR-Daten aus.
 
-1.  Navigate to the "Upload & Table" tab.
-2.  Select and upload your qPCR result files (one for COV-2, one for
-    Flu).
-3.  View and evaluate the results of the qPCR.
+📌 **Hinweis:** Falls Sie Fragen haben oder Unterstützung benötigen,
+wenden Sie sich bitte an die Prüfleitung (Heitlinger, Holländer) . 🚀
