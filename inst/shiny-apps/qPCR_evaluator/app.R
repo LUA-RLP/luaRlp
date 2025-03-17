@@ -1,5 +1,5 @@
 library(shiny)
-library(DT)  # For interactive tables
+library(DT)
 library(tidyr)
 library(dplyr)
 library(magrittr)
@@ -10,13 +10,11 @@ source(file.path("R", "preprocess_data.R"))
 ui <- fluidPage(
   titlePanel("qPCR Evaluator"),
 
-  # File Input
   sidebarLayout(
     sidebarPanel(
       tags$p("Einlesen der .csv Datei(en) aus:"),
       tags$p("📂 O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/qPCR_CSVs/"),
 
-      # User selects whether to upload one or two files
       radioButtons("file_choice", "Wie viele Dateien möchten Sie hochladen?",
                    choices = c("Eine Datei" = "one", "Zwei Dateien" = "two"),
                    selected = "two"),
@@ -25,12 +23,10 @@ ui <- fluidPage(
                    choices = c("Generelle" = "generic", "COV-FLU" = "cov-flu"),
                    selected = "generic"),
 
-      # File input for CoV-2 (always shown)
       fileInput("first_file", "Datei 1 hochladen",
                 accept = c(".csv"),
                 placeholder = "Wähle die erste Datei"),
 
-      # Conditionally show Flu-RSV input if the user selects "two files"
       conditionalPanel(
         condition = "input.file_choice == 'two'",
         fileInput("second_file", "Datei 2 hochladen",
@@ -38,12 +34,14 @@ ui <- fluidPage(
                   placeholder = "Wähle die zweite Datei")
       ),
 
+      actionButton("process", "Daten verarbeiten"),
       hr(),
       tags$a("Erstellung der CSV-Dateien für den Import", href = "info.html",
-             target = "_blank")  # Opens in new tab
+             target = "_blank")
     ),
 
     mainPanel(
+      uiOutput("warning_msg"),
       DTOutput("table")
     )
   )
@@ -52,47 +50,56 @@ ui <- fluidPage(
 # Server
 server <- function(input, output, session) {
 
-  # Reactive Data Loading
-  PCR <- reactive({
-    # Ensure at least one file is uploaded
+  warning_msg <- reactiveVal(NULL)
+
+  PCR <- eventReactive(input$process, {
     req(input$first_file)
 
-    # Read first file (COV-2)
+    warning_msg(NULL)
+
     tab1 <- read.csv(input$first_file$datapath, skip = 19, header = TRUE)
 
-    # Check if second file is uploaded and process it if available
-    if (!is.null(input$second_file)) {
+    if (!is.null(input$second_file) && input$file_choice == "two") {
       tab2 <- read.csv(input$second_file$datapath, skip = 19, header = TRUE)
 
-      # Combine both datasets and preprocess
-      return(preprocess_data(tab1, tab2))
+      # Count non-matching sample names
+      incomp <- sum(!(tab1$Sample %in% tab2$Sample)) +
+        sum(!(tab2$Sample %in% tab1$Sample))
+
+      warning_msg(paste0("⚠️ Warnung: ", incomp,
+                         " Sample-Namen aus den beiden Dateien sind nicht kompatibel! ",
+                         "Dies führt zu leeren Tabellenfeldern."))
+
+      result <- preprocess_data(tab1, tab2, nicecols = input$column_choice)
     } else {
-      # Only preprocess the first dataset
-      return(preprocess_data(tab1, NULL))
+      warning_msg("✅ Alle Samples stammen aus einer einzigen Datei.")
+      result <- preprocess_data(tab1, NULL, nicecols = input$column_choice)
     }
+
+    return(result)
   })
+
+  output$warning_msg <- renderUI({
+    tags$div(style = "color: red; font-weight: bold; margin-bottom: 10px;", warning_msg())
+  })
+
   output$table <- renderDT({
+    req(PCR())
+
     datatable(PCR(), escape = FALSE, rownames = FALSE, options = list(
       pageLength = 15,
       autoWidth = TRUE,
-      columnDefs = list(list(width = '70px', targets = "_all"))  # Smaller column width
+      columnDefs = list(list(width = '70px', targets = "_all"))
     )) %>%
       formatStyle(
         columns = colnames(PCR())[-1],
-        backgroundColor = styleInterval(c(0), c("white", "red"))  # Red for numbers > 0
+        backgroundColor = styleInterval(c(0), c("white", "red"))
       ) %>%
       formatStyle(
         columns = "ICR",
-        backgroundColor = styleInterval(c(NA), c("white", "lightgreen"))  # Green if ICR has a value
-      ) #%>%
-      # formatStyle(
-      #   columns = "Sample",
-      #   fontWeight = styleEqual(
-      #     unique(PCR()$Sample),
-      #     ifelse(rowSums(!is.na(PCR()[, c("CoV-2", "InfA", "InfB", "RSV A/B")])) > 0, "bold", "normal")
-      #   )
-      # )
-    })
+        backgroundColor = styleInterval(c(NA), c("white", "lightgreen"))
+      )
+  })
 }
 
 shinyApp(ui, server)

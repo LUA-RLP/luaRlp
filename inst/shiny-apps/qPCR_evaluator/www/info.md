@@ -27,7 +27,7 @@ Die Rohdaten der Bio-Rad qPCR befinden sich in:\
 
 Um die Daten zu exportieren:
 
-1.   Öffnen Sie die Dateien **nacheinander** mit der **Bio-Rad CFX
+1.  Öffnen Sie die Dateien **nacheinander** mit der **Bio-Rad CFX
     Manager Software**.
 
 2.  Wählen Sie **"Export \> Custom Export..."**
@@ -44,10 +44,18 @@ this:
 
 ### **Anleitung zur Nutzung**
 
-1️⃣ Wechseln Sie zum Tab **„Upload & Tabelle“**.\
+1️⃣Entscheiden Sie ob sie eine oder zwei Dateien hochladen wollen (zwei
+Dateien mit übereinsimmenden Probennamen werden zusammengeführt)
+
 2️⃣ Wählen Sie Ihre **qPCR-Ergebnisdateien** aus und laden Sie sie hoch
-(**eine für COV-2, eine für Flu**).\
-3️⃣ Sehen Sie sich die Ergebnisse an und werten Sie die qPCR-Daten aus.
+(**eine oder zwei Dateien**).\
+3️⃣ Whlen sie, o sie generelle Splalten prozessieren oder eine spezielle
+Sortierung für Cov-Flu PCRs (in der Reihenfolge der Nennung auf den
+Prüfberichten) vornehmen wollen.
+
+4. Drücken Sie "Daten Verarbeiten"
+
+5. Sehen Sie sich die Ergebnisse an und werten Sie die qPCR-Daten aus.
 
 📌 **Hinweis:** Falls Sie Fragen haben oder Unterstützung benötigen,
 wenden Sie sich bitte an die Prüfleitung (Heitlinger, Holländer) . 🚀
