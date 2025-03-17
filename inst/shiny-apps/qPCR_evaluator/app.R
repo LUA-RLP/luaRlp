@@ -13,20 +13,35 @@ ui <- fluidPage(
   # File Input
   sidebarLayout(
     sidebarPanel(
-      tags$p("Read csv files stored at:"),
-      tags$p("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/qPCR_CSVs/"),
+      tags$p("Einlesen der .csv Datei(en) aus:"),
+      tags$p("📂 O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/qPCR_CSVs/"),
 
-      fileInput("cov_file", "Upload CoV-2 File",
-                accept = c(".csv"),
-                placeholder = "Select a CoV-2 CSV file"),
+      # User selects whether to upload one or two files
+      radioButtons("file_choice", "Wie viele Dateien möchten Sie hochladen?",
+                   choices = c("Eine Datei" = "one", "Zwei Dateien" = "two"),
+                   selected = "two"),
 
-      fileInput("flu_file", "Upload Flu-RSV File",
+      radioButtons("column_choice", "Spaltenauswahl:",
+                   choices = c("Generelle" = "generic", "COV-FLU" = "cov-flu"),
+                   selected = "generic"),
+
+      # File input for CoV-2 (always shown)
+      fileInput("first_file", "Datei 1 hochladen",
                 accept = c(".csv"),
-                placeholder = "Select a Flu-RSV CSV file"),
-      hr(),
-      tags$a("How to generate CSVs for import", href = "info.html",
-             target = "_blank")  # Opens in new tab
+                placeholder = "Wähle die erste Datei"),
+
+      # Conditionally show Flu-RSV input if the user selects "two files"
+      conditionalPanel(
+        condition = "input.file_choice == 'two'",
+        fileInput("second_file", "Datei 2 hochladen",
+                  accept = c(".csv"),
+                  placeholder = "Wähle die zweite Datei")
       ),
+
+      hr(),
+      tags$a("Erstellung der CSV-Dateien für den Import", href = "info.html",
+             target = "_blank")  # Opens in new tab
+    ),
 
     mainPanel(
       DTOutput("table")
@@ -39,14 +54,22 @@ server <- function(input, output, session) {
 
   # Reactive Data Loading
   PCR <- reactive({
-    # Check if files are uploaded
-    req(input$cov_file, input$flu_file)
+    # Ensure at least one file is uploaded
+    req(input$first_file)
 
-    # Read CSVs
-    COV <- read.csv(input$cov_file$datapath, skip = 19, header = TRUE) %>% cbind(pcr = "COV")
-    FLU <- read.csv(input$flu_file$datapath, skip = 19, header = TRUE) %>% cbind(pcr = "FLU")
+    # Read first file (COV-2)
+    tab1 <- read.csv(input$first_file$datapath, skip = 19, header = TRUE)
 
-    preprocess_data_COV_FLU(COV, FLU)
+    # Check if second file is uploaded and process it if available
+    if (!is.null(input$second_file)) {
+      tab2 <- read.csv(input$second_file$datapath, skip = 19, header = TRUE)
+
+      # Combine both datasets and preprocess
+      return(preprocess_data(tab1, tab2))
+    } else {
+      # Only preprocess the first dataset
+      return(preprocess_data(tab1, NULL))
+    }
   })
   output$table <- renderDT({
     datatable(PCR(), escape = FALSE, rownames = FALSE, options = list(
@@ -61,14 +84,14 @@ server <- function(input, output, session) {
       formatStyle(
         columns = "ICR",
         backgroundColor = styleInterval(c(NA), c("white", "lightgreen"))  # Green if ICR has a value
-      ) %>%
-      formatStyle(
-        columns = "Sample",
-        fontWeight = styleEqual(
-          unique(PCR()$Sample),
-          ifelse(rowSums(!is.na(PCR()[, c("CoV-2", "InfA", "InfB", "RSV A/B")])) > 0, "bold", "normal")
-        )
-      )
+      ) #%>%
+      # formatStyle(
+      #   columns = "Sample",
+      #   fontWeight = styleEqual(
+      #     unique(PCR()$Sample),
+      #     ifelse(rowSums(!is.na(PCR()[, c("CoV-2", "InfA", "InfB", "RSV A/B")])) > 0, "bold", "normal")
+      #   )
+      # )
     })
 }
 
