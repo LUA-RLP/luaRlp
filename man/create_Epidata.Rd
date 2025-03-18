@@ -64,7 +64,8 @@ entries to a file (given in the argument "problems").}
 }
 \value{
 Writes a csv file compatible with the RIDOM database scheme "LUA RLP
-default bacteria to "out". See "Format".
+default bacteria to "\strong{out}" and a optionally a second csv file to
+"\strong{problem}". See "Format".
 }
 \description{
 createEpidata
