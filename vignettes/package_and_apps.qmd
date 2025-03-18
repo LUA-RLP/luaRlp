@@ -1,9 +1,13 @@
 ---
-title: "R im Lua-Rlp: Paket LuaRlp"
-format: revealjs
-editor: visual
+title: "Package and Apps"
+author: "Emanuel Heitlinger"
+date: "`r Sys.Date()`"
+output: html_vignette
+vignette: >
+  %\VignetteIndexEntry{Package and Apps}
+  %\VignetteEngine{quarto}
+  %\VignetteEncoding{UTF-8}
 ---
-
 ## Über diese Dokumentation
 
 Diese Dokumentation ist Teil des R-Pakets `luaRlp`. Einen Startpunkt für "alle-R-Dinge" am LUA-RLP finden Sie unter <http://srvldap0008.lua.rlp.de:3838/>

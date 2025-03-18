@@ -9,6 +9,27 @@ wanted_columns_generic <- c("Perc Good Targets", "Avg Coverage  Assembled.",
                            "Top.Species.Match", "Sample.ID", "Complex.Type",
                            "Sequencing.Run.ID", "N50..Assembled.")
 
+#
+#Missing values in Distance Columns
+#
+# Perc. Good Targets
+#
+# Avg. Coverage (Assembled)
+#
+# Approximated Genome Size (Mbases)
+#
+# Top Species Match Identity
+#
+# Top Species Match
+#
+# Sample ID
+#
+# ST Warwick
+#
+# Complex Type
+
+
+
 wanted_columns_EHEC <- c("ST.Warwick", "O.Type", "H.Type", "CC.Warwick")
 
 wanted_columns_Salmonella <- c()
