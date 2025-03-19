@@ -12,7 +12,7 @@ Depends: R (>= 3.5.0)
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.3.2
-VignetteBuilder: knitr, quarto
+VignetteBuilder: quarto
 Suggests: quarto
 Imports: odbc, 
     dplyr, 
