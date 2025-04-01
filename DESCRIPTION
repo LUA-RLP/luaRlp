@@ -25,3 +25,8 @@ Imports: odbc,
     sf,
     ggplot2,
     viridis
+Suggests: rmarkdown,
+    knitr
+VignetteBuilder: knitr
+
+
