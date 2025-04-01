@@ -192,7 +192,10 @@ einlesen_sure <- function(path = "Z:/DFS-LUA-LD-Zusammenarbeit/LD-AB32.5_IfSG_Me
   data %>%
     mutate(schwere=ifelse(schwere==0, NA, schwere)) %>%
     mutate(schwere = na_if(trimws(schwere), ""))
-  
+ } 
+
+
+
   #------------------------------------------------------------------
   # Create objects for dates
   #------------------------------------------------------------------  
@@ -208,11 +211,63 @@ einlesen_sure <- function(path = "Z:/DFS-LUA-LD-Zusammenarbeit/LD-AB32.5_IfSG_Me
   # #years
   # current_year <- year(current_date - 7)
   # prev6years <- current_year - 6
-  
 
+
+# Select observations of reporting week (current week) and add up all values into one row
+
+#' Title
+#'
+#' @param sure_data 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+Zusammenfassung_Berichtswoche <- function(sure_data) {
+  df_summary <- sure_data %>%
+    filter(Woche == lubridate::isoweek(Sys.Date() - 7)) %>%
+    filter(Jahr == year(Sys.Date() - 7)) %>%
+    group_by(Woche, Jahr) %>%
+    summarize(
+      anzahl = n(),
+      SARS = sum(SARS, na.rm = TRUE),
+      InfluA = sum(InfluA, na.rm = TRUE),
+      InfluB = sum(InfluB, na.rm = TRUE),
+      influenza = sum(influenza, na.rm = TRUE),
+      RSV = sum(RSV, na.rm = TRUE),
+      multi = sum(multi, na.rm = TRUE)
+    )
   
+  # Calculate additional numbers
+  df_summary %>%
+    mutate(pos_real = (SARS + influenza + RSV) - multi,
+           prop_real = pos_real / anzahl,
+           Numerus_anzahl = ifelse(anzahl == 1, "Probe", "Proben"),
+           Numerus_SARS = ifelse(SARS == 1, "Nachweis", "Nachweise"),
+           Numerus_influenza = ifelse(influenza == 1, "Nachweis", "Nachweise"),
+           Numerus_RSV = ifelse(RSV == 1, "Nachweis", "Nachweise"),
+           Numerus_multi = ifelse(multi == 1, "Probe", "Proben")
+    )
 }
 
 
-
-
+# 
+# text_df <- sure_summary %>%
+#   mutate(anzahl_T = ifelse(anzahl == 1, glue("{df_text$anzahl} Probe"), glue("{df_text$anzahl} Proben")),
+#          SARS_T = ifelse(SARS == 1, glue("{df_text$SARS} Nachweis"), glue("{df_text$SARS} Nachweise")),
+#          influenza_T = ifelse(influenza == 1, glue("{df_influenza$anzahl} Nachweis"), glue("{df_text$influenza} Nachweise")),
+#          RSV_T = ifelse(RSV == 1, glue("{df_text$RSV} Nachweis"), glue("{df_text$RSV} Nachweise")),
+#          multi_T = ifelse(multi == 1, glue("{df_text$multi} Probe"), glue("{df_text$multi} Proben"))
+#   )
+# 
+# 
+# Text <- paste0("In Kalenderwoche ",df_text$Woche, " wurden insgesamt ",df_text$anzahl_T,
+#                " von den rheinland-pfälzischen Arztpraxen eingesandt.  Davon wurde bei ",df_text$pos_real,
+#                " (",round(df_text$prop_real * 100, 0),
+#                "%) mindestens eine der folgenden Infektionen nachgewiesen: SARS-CoV-2 (", df_text$SARS_T,"); Influenza (",
+#                df_text$influenza_T,"); RSV (",df_text$RSV_T,"). Insgesamt wurde in ",
+#                df_text$multi_T, " mehr als ein Erreger nachgewiesen.")
+# 
+# cat(Text)
+# 
+# }
