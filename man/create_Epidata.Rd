@@ -25,14 +25,22 @@ The csv file written to "out" has the following columns:
   SurvNet}
   \item{Expositionsort}{Character. Derived from multiple exposure variables
   from SurvNet (see ?luaRlp:::.combine_exposure)}
-  \item{Outbreak}{foo}
-  \item{Country of Isolation}{foo}
-  \item{Lat/Long of Isolation}{foo}
-  \item{Project}{foo}
-  \item{Host}{foo}
-  \item{Source type}{foo}
-  \item{Source subtype}{foo}
-  \item{Specimen type}{foo}
+  \item{Outbreak}{Logical. Recoded from SurvNet by determining
+  whether AusbruchInfo_InterneRef is filled}
+  \item{Country of Isolation}{Character. Hard-coded "Germany".}
+  \item{Lat/Long of Isolation}{Character. The latitude and longitude of the
+  centroid of the Landkreis derived from data("LKLatLong") merged via
+  "Meldelandkreis" (merge key)}
+  \item{Project}{Character. The RIDOM project name recoded from
+  Meldekategorie (Erreger) from SurvNet}
+  \item{Host}{Character. Hardcoded "homo sapiens" for all but Legionella,
+  which needs to be entered manually (set to "NACHTRAGEN!")}
+  \item{Source type}{Character. Hardcoded "clinical/host-associated" for all
+  but Legionella, which needs to be entered manually (set to "NACHTRAGEN!")}
+  \item{Source subtype}{Character. Hardcoded "human" for all but Legionella,
+  which needs to be entered manually (set to "NACHTRAGEN!")}
+  \item{Specimen type}{Character. Hardcoded "stool" for salmonella and EHEC,
+  "NACHTRAGEN!" for Legionella, MRSA and Listeria}
   }
 }
 \usage{
