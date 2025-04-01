@@ -65,3 +65,20 @@
 "RLP_geo"
 
 
+#' Praxisliste
+#'
+#' Foo
+#'
+#' @docType data
+#' @usage data(Praxislist)
+#'
+#' @format A list with two geo-objects (Sf - Simple feature collections):
+#' \describe{
+#'   \item{einsender}{foo}
+#'   \item{praxisname}{foo}
+#'   }
+#' @source Compiled by Anja Schoeps
+#' @examples
+#' data(Praxisliste)
+"Praxisliste"
+

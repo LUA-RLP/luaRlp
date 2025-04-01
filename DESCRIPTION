@@ -24,4 +24,6 @@ Imports: odbc,
     rcmdcheck,
     sf,
     ggplot2,
-    viridis
+    viridis,
+    lubridate,
+    stringr
