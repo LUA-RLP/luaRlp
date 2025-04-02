@@ -19,10 +19,6 @@ ui <- fluidPage(
                    choices = c("Eine Datei" = "one", "Zwei Dateien" = "two"),
                    selected = "two"),
 
-      radioButtons("column_choice", "Spaltenauswahl:",
-                   choices = c("Generelle" = "generic", "COV-FLU" = "cov-flu"),
-                   selected = "generic"),
-
       fileInput("first_file", "Datei 1 hochladen",
                 accept = c(".csv"),
                 placeholder = "Wähle die erste Datei"),
@@ -70,10 +66,10 @@ server <- function(input, output, session) {
                          " Sample-Namen aus den beiden Dateien sind nicht kompatibel! ",
                          "Dies führt zu leeren Tabellenfeldern."))
 
-      result <- preprocess_data(tab1, tab2, nicecols = input$column_choice)
+      result <- preprocess_data(tab1, tab2)
     } else {
       warning_msg("✅ Alle Samples stammen aus einer einzigen Datei.")
-      result <- preprocess_data(tab1, NULL, nicecols = input$column_choice)
+      result <- preprocess_data(tab1, NULL)
     }
 
     return(result)

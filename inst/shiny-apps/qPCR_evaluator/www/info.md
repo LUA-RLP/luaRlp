@@ -1,6 +1,6 @@
 # **Über diese App**
 
-Diese Shiny-App dient zur Auswertung von qPCR-Daten. Derzeit unterstützt sie entweder eine generelle Porzessierung ohne spezielle Spalten-Namen-Sortierung oder eine angepasste Sortierung für SURE COV-2, INF A/B und RSV. Die Daten können in einer Datei oder in zwei separaten Dateien vorliegen. Liegen die Daten in zwei Dateien vor, können sie (für passende Probennamen) zusammengeführt werden.
+Diese Shiny-App dient zur Auswertung von qPCR-Daten. Die Daten können in einer Datei oder in zwei separaten Dateien vorliegen. Liegen die Daten in zwei Dateien vor, können sie (für passende Probenummern) zusammengeführt werden.
 
 ### **Dateninput**
 
@@ -40,12 +40,8 @@ Then leave all the settings at default values. This should look like this:
 
 🔷 **2.** Wählen Sie Ihre **qPCR-Ergebnisdateien** aus und laden Sie sie hoch (**eine oder zwei Dateien**).
 
-🔷 **3.** Wählen Sie die **Spaltenauswahl**:\
-- **Generelle Spalten** *(Standardverarbeitung)*\
-- **Spezielle Cov-Flu-Sortierung** *(entsprechend der Prüfberichte)*
+🔷 **3.** Drücken Sie **"Daten verarbeiten"**.
 
-🔷 **4.** Drücken Sie **"Daten verarbeiten"**.
-
-🔷 **5.** Sehen Sie sich die Ergebnisse an und werten Sie die **qPCR-Daten** aus.
+🔷 **4.** Sehen Sie sich die Ergebnisse an und werten Sie die **qPCR-Daten** aus.
 
 📌 **Hinweis:** Falls Sie Fragen haben oder Unterstützung benötigen, wenden Sie sich bitte an die **Prüfleitung (Heitlinger, Holländer)**. 🚀
