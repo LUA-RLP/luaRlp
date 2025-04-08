@@ -5,20 +5,23 @@
 \alias{Praxisliste}
 \title{Praxisliste}
 \format{
-A list with two geo-objects (Sf - Simple feature collections):
+Eine Tabelle mit 5 Spalten, in denen zusätzliche Informationen zu den Arztpraxen liegen:
 \describe{
-  \item{einsender}{foo}
-  \item{praxisname}{foo}
+  \item{einsender}{LIMS-Kürzel für die Praxis}
+  \item{praxisname}{Name der Arztpraxis}
+  \item{Kreis}{Landkreis, in dem die Arztpraxis liegt}
+  \item{Zuordnung}{LA oder KO: Labor, in dem Proben analysiert werden}
+  \item{Arzttyp}{Kinder oder Allgemein}
   }
 }
 \source{
 Compiled by Anja Schoeps
 }
 \usage{
-data(Praxislist)
+data(Praxisliste)
 }
 \description{
-Foo
+Enhält Daten zu den teilnehmenden Arztpraxen in SURE
 }
 \examples{
 data(Praxisliste)
