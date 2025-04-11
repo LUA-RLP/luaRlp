@@ -65,3 +65,23 @@
 "RLP_geo"
 
 
+#' Praxisliste
+#'
+#' Enhält Daten zu den teilnehmenden Arztpraxen in SURE
+#'
+#' @docType data
+#' @usage data(Praxisliste)
+#'
+#' @format Eine Tabelle mit 5 Spalten, in denen zusätzliche Informationen zu den Arztpraxen liegen:
+#' \describe{
+#'   \item{einsender}{LIMS-Kürzel für die Praxis}
+#'   \item{praxisname}{Name der Arztpraxis}
+#'   \item{Kreis}{Landkreis, in dem die Arztpraxis liegt}
+#'   \item{Zuordnung}{LA oder KO: Labor, in dem Proben analysiert werden}
+#'   \item{Arzttyp}{Kinder oder Allgemein}
+#'   }
+#' @source Compiled by Anja Schoeps
+#' @examples
+#' data(Praxisliste)
+"Praxisliste"
+
