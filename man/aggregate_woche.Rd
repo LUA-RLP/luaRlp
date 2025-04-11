@@ -7,7 +7,11 @@
 aggregate_woche(sure_data, week, year)
 }
 \arguments{
-\item{sure_data}{}
+\item{sure_data}{Datei, die mit der Funktion einlesen_sure() erzeugt wird}
+
+\item{week}{Die Kalenderwoche, die abgefragt wird. Auswahl zwischen "all", "current", "previous52" und einer Zahl bzw. einer Liste von Zahlen}
+
+\item{year}{Das Jahr, die abgefragt wird. Auswahl zwischen "all", "current", "previous2" und einer Zahl bzw. einer Liste von Zahlen}
 }
 \value{
 Aggregierter Datenframe mit ausgewählten Wochen
@@ -16,6 +20,8 @@ Aggregierter Datenframe mit ausgewählten Wochen
 Title
 }
 \examples{
-Zusammenfassung_Berichtswoche()
+aggregate_woche(,"current","current")
+aggregate_woche(,"all","all")
+aggregate_woche(,c(1,2,3),2025)
 
 }

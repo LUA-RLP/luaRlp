@@ -10,7 +10,7 @@ einlesen_sure(
 )
 }
 \arguments{
-\item{path}{}
+\item{path}{Pfad auf dem der LIMS-Export liegt}
 }
 \value{
 Ein datenframe zur Weiterverwendung

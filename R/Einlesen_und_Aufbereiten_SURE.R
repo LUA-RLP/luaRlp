@@ -5,7 +5,7 @@
 
 #' einlesen_sure
 #'
-#' @param path
+#' @param path Pfad auf dem der LIMS-Export liegt
 #'
 #' @return Ein datenframe zur Weiterverwendung
 #'
@@ -200,12 +200,17 @@ einlesen_sure <- function(path = "Z:/DFS-LUA-LD-Zusammenarbeit/LD-AB32.5_IfSG_Me
 
 #' Title
 #'
-#' @param sure_data
+#' @param sure_data Datei, die mit der Funktion einlesen_sure() erzeugt wird
+#' @param week Die Kalenderwoche, die abgefragt wird. Auswahl zwischen "all", "current", "previous52" und einer Zahl bzw. einer Liste von Zahlen
+#' @param year Das Jahr, die abgefragt wird. Auswahl zwischen "all", "current", "previous2" und einer Zahl bzw. einer Liste von Zahlen
 #'
 #' @return Aggregierter Datenframe mit ausgewählten Wochen
 #' @export
 #'
-#' @examples Zusammenfassung_Berichtswoche()
+#' @examples
+#' aggregate_woche(,"current","current")
+#' aggregate_woche(,"all","all")
+#' aggregate_woche(,c(1,2,3),2025)
 #'
 aggregate_woche <- function(sure_data,week,year) {
 
@@ -258,7 +263,8 @@ aggregate_woche <- function(sure_data,week,year) {
   # Merge with data frame
   df_summary <- full_join(alle_wochen, df_summary, by = c("Jahr", "Woche")) %>%
     filter(!(Woche < 4 & Jahr <= 2023)) %>%
-    filter(!(Woche>lubridate::isoweek(Sys.Date() - 7) & Jahr >= year(Sys.Date() - 7)))
+    filter(!(Woche>lubridate::isoweek(Sys.Date() - 7) & Jahr >= year(Sys.Date() - 7))) %>%
+    filter(!Woche==53) #wir hassen KW 53
 
 
   # Merge with number of mail sendings per week and year
@@ -292,94 +298,39 @@ aggregate_woche <- function(sure_data,week,year) {
            Numerus_multi = ifelse(multi == 1, "Probe", "Proben")
     )
 
-  df_summary %>%
-    filter(Woche==week)%>%
-    filter(Jahr==year)
+  #set filter for year and week based on the parameters year and week
 
+  if (length(week) == 1 && week=="current") {
+    df_summary <- df_summary %>%
+    filter(Woche==lubridate::isoweek(Sys.Date() - 7))
+  } else if (length(week) == 1 && week=="all") {
+        df_summary <- df_summary
+  } else if (length(week) == 1 && week=="previous52") {
+    df_summary <- df_summary %>%
+      filter(!(Woche <= lubridate::isoweek(Sys.Date() - 7) & Jahr < year(Sys.Date() - 7)))
+  } else if (is.numeric(week)) {
+        df_summary <- df_summary %>%
+        filter(Woche %in% week)
+  } else {
+    message("Für 'week' bitte 'current', 'all' oder ein numerisches Element angeben!")
+  }
+
+
+  if (length(year) == 1 && year=="current") {
+    df_summary <- df_summary %>%
+      filter(Jahr==year(Sys.Date() - 7))
+  } else if (length(year) == 1 && year=="all") {
+    df_summary <- df_summary
+  } else if (length(year) == 1 && year=="previous2") {
+    df_summary <- df_summary %>%
+      filter(Jahr==year(Sys.Date() - 7) | Jahr==year(Sys.Date() - 372))
+  } else if (is.numeric(year)) {
+    df_summary <- df_summary %>%
+      filter(Jahr %in% year)
+  } else{
+    message("Für 'year' bitte 'current', 'all', 'previous2' oder ein numerisches Element angeben!")
+  }
+
+df_summary
 }
 
-
-
-
-
-
-
-
-
-
-
-  #------------------------------------------------------------------
-  # Create objects for dates
-  #------------------------------------------------------------------
-
-  # # Current and previous weeks (reporting week is always last week)
-  # current_date <- Sys.Date()
-  # #calendar weeks
-  # this_week <- lubridate::isoweek(current_date)
-  # current_week <- lubridate::isoweek(current_date - 7)
-  # week_2ago <- lubridate::isoweek(current_date - 14)
-  # week_3ago <- lubridate::isoweek(current_date - 21)
-  # week_4ago <- lubridate::isoweek(current_date - 28)
-  # #years
-  # current_year <- year(current_date - 7)
-  # prev6years <- current_year - 6
-
-
-# Select observations of reporting week (current week) and add up all values into one row for text elements
-
-#' Title
-#'
-#' @param sure_data
-#'
-#' @return Einzeiliger Datenframe mit aktuellen Werten für die Berichte
-#' @export
-#'
-#' @examples Zusammenfassung_Berichtswoche()
-Zusammenfassung_Berichtswoche <- function(sure_data) {
-  df_summary <- sure_data %>%
-    filter(Woche == lubridate::isoweek(Sys.Date() - 7)) %>%
-    filter(Jahr == year(Sys.Date() - 7)) %>%
-    group_by(Woche, Jahr) %>%
-    summarize(
-      anzahl = n(),
-      SARS = sum(SARS, na.rm = TRUE),
-      InfluA = sum(InfluA, na.rm = TRUE),
-      InfluB = sum(InfluB, na.rm = TRUE),
-      influenza = sum(influenza, na.rm = TRUE),
-      RSV = sum(RSV, na.rm = TRUE),
-      multi = sum(multi, na.rm = TRUE)
-    )
-
-  # Calculate additional numbers
-  df_summary %>%
-    mutate(pos_real = (SARS + influenza + RSV) - multi,
-           prop_real = pos_real / anzahl,
-           Numerus_anzahl = ifelse(anzahl == 1, "Probe", "Proben"),
-           Numerus_SARS = ifelse(SARS == 1, "Nachweis", "Nachweise"),
-           Numerus_influenza = ifelse(influenza == 1, "Nachweis", "Nachweise"),
-           Numerus_RSV = ifelse(RSV == 1, "Nachweis", "Nachweise"),
-           Numerus_multi = ifelse(multi == 1, "Probe", "Proben")
-    )
-}
-
-
-#
-# text_df <- sure_summary %>%
-#   mutate(anzahl_T = ifelse(anzahl == 1, glue("{df_text$anzahl} Probe"), glue("{df_text$anzahl} Proben")),
-#          SARS_T = ifelse(SARS == 1, glue("{df_text$SARS} Nachweis"), glue("{df_text$SARS} Nachweise")),
-#          influenza_T = ifelse(influenza == 1, glue("{df_influenza$anzahl} Nachweis"), glue("{df_text$influenza} Nachweise")),
-#          RSV_T = ifelse(RSV == 1, glue("{df_text$RSV} Nachweis"), glue("{df_text$RSV} Nachweise")),
-#          multi_T = ifelse(multi == 1, glue("{df_text$multi} Probe"), glue("{df_text$multi} Proben"))
-#   )
-#
-#
-# Text <- paste0("In Kalenderwoche ",df_text$Woche, " wurden insgesamt ",df_text$anzahl_T,
-#                " von den rheinland-pfälzischen Arztpraxen eingesandt.  Davon wurde bei ",df_text$pos_real,
-#                " (",round(df_text$prop_real * 100, 0),
-#                "%) mindestens eine der folgenden Infektionen nachgewiesen: SARS-CoV-2 (", df_text$SARS_T,"); Influenza (",
-#                df_text$influenza_T,"); RSV (",df_text$RSV_T,"). Insgesamt wurde in ",
-#                df_text$multi_T, " mehr als ein Erreger nachgewiesen.")
-#
-# cat(Text)
-#
-# }
