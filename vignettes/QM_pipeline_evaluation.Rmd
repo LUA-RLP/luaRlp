@@ -1,0 +1,48 @@
+---
+title: "QM_pipeline_evaluation"
+output:
+pdf_document:   
+latex_engine: lualatex
+vignette: >
+  %\VignetteIndexEntry{QM_pipeline_evaluation}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# QM konforme (Re-)Evaluierung von Assemblies und Prüfmethoden
+
+Dieses Dokument beschreibt das Vorgehen bei der (Re-)Evaluierung der bioinformatischen Prozessketten (sog. Pipelines). Dies ist relevant für die folgenden Anwweisungen:
+
+-   SOP P 32.6 0004 01_Assemblierung von „Short-Read“-Sequenzdaten zur Rekonstruktion von Bakteriengenomen
+
+-   PRM 0 32.6 0003 01_Genotypisierung Salmonella enterica Genomsequenzdaten FASTA
+
+-   PRM 0 32.6 0004 01_Genotypisierung E. coli
+
+-   PRM 0 32.6 0005 01_Genotypisierung Listeria monocytogenes
+
+-   PRM 0 32.6 0006 01_Genotypisierung Staph aureus
+
+-   PRM 0 32.6 0007 01_Genotypisierung Legionella pneumophila
+
+Es beschreibt das Vorgehen zur Erstellung Evaluierungsauswertung wie in den jeweiligen Anhängen "Beispielhafte Doku Prozessvalidierung.pdf" beschrieben.
+
+Zunächst laden wir das Paket `luaRlp`:
+
+```{r setup}
+knitr::opts_chunk$set(message = FALSE, include = FALSE)
+## library(luaRlp)
+```
+
+**Außerhalb von R** exportieren wir in **RIDOM Seqsphere** nun eine sog. "*Comparison Table*" für die Projekte "*Produktiv_Salmonellea_enterica*", "*Produktiv_EHEC*", "*Produktiv_Listeria_moncytogenes*", "*Produktiv_MRSA*" und "*Produktiv_Legionella_pneumophila*".
+
+Wir speichern diese Tabellen als **.csv-Dateien** in einem Ordner, den wir im nächsten Schritt benutzen. Sinnvoll ist eine Benennung mit dem aktuellen Datum. Wir löschen nun die Evaluierungs-Proben in RIDOM Seqsphere um eine Re-Prozessierung zu ermöglichen.
+
+Wir aktivieren nun die neue Pipeline in RIDOM ()

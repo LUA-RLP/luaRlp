@@ -20,10 +20,12 @@ Imports: odbc,
     DT, 
     tidyr,
     markdown,
-    rmarkdown,
     rcmdcheck,
     sf,
     ggplot2,
     viridis,
     lubridate,
     stringr
+Suggests: rmarkdown,
+    knitr
+VignetteBuilder: knitr
