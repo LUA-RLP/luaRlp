@@ -18,7 +18,7 @@ knitr::opts_chunk$set(
 
 # QM konforme (Re-)Evaluierung von Assemblies und Prüfmethoden
 
-Dieses Dokument beschreibt das Vorgehen bei der (Re-)Evaluierung der bioinformatischen Prozessketten (sog. Pipelines). Dies ist relevant für die folgenden Anwweisungen:
+Dieses Dokument beschreibt das Vorgehen bei der (Re-)Evaluierung der bioinformatischen Prozessketten (sog. Pipelines). Dies ist relevant für die folgenden Anweisungen:
 
 -   SOP P 32.6 0004 01_Assemblierung von „Short-Read“-Sequenzdaten zur Rekonstruktion von Bakteriengenomen
 
@@ -32,17 +32,35 @@ Dieses Dokument beschreibt das Vorgehen bei der (Re-)Evaluierung der bioinformat
 
 -   PRM 0 32.6 0007 01_Genotypisierung Legionella pneumophila
 
-Es beschreibt das Vorgehen zur Erstellung Evaluierungsauswertung wie in den jeweiligen Anhängen "Beispielhafte Doku Prozessvalidierung.pdf" beschrieben.
+Es beschreibt das Vorgehen zur Erstellung Evaluierungsauswertung wie für die jeweiligen Anhänge "Beispielhafte Doku Prozessvalidierung.pdf" gefordert.
 
-Zunächst laden wir das Paket `luaRlp`:
+**Außerhalb von R** exportieren wir in **RIDOM Seqsphere** "*Comparison Tables*" für die Projekte "*Produktiv_Salmonellea_enterica*", "*Produktiv_EHEC*", "*Produktiv_Listeria_moncytogenes*", "*Produktiv_MRSA*" und "*Produktiv_Legionella_pneumophila*".
 
-```{r setup}
-knitr::opts_chunk$set(message = FALSE, include = FALSE)
-## library(luaRlp)
+1.  Wir speichern diese Tabellen als **.csv-Dateien** in einem Ordner (z.b. das aktuelle Datum), den wir im nächsten Schritt benutzen. Sinnvoll ist eine Benennung mit dem aktuellen Datum.
+2.  Wir löschen nun die Evaluierungs-Proben in RIDOM Seqsphere um eine Re-Prozessierung zu ermöglichen.
+3.  Wir aktivieren nun die neue Pipeline in RIDOM Seqsphere.
+4.  Nachdem die Prozessierung abgeschlossen ist exportieren die "*Comparison Tables*" für die o.g. Projekte erneut und speichern sie in einem anderen Ordner (z.b. erneut das aktuelle Datum). Bei Re-Validierung kann der erste Export (1.) ausbleiben und es kann direkt mit Punkt 2 begonnen werden.
+
+Nun können wir die Arbeit in R beginnen, dazu laden wir das Paket `luaRlp`:
+
+```{r setup, include=FALSE}
+suppressPackageStartupMessages(library(luaRlp, quietly = TRUE))
 ```
 
-**Außerhalb von R** exportieren wir in **RIDOM Seqsphere** nun eine sog. "*Comparison Table*" für die Projekte "*Produktiv_Salmonellea_enterica*", "*Produktiv_EHEC*", "*Produktiv_Listeria_moncytogenes*", "*Produktiv_MRSA*" und "*Produktiv_Legionella_pneumophila*".
+`library(luaRlp)`
 
-Wir speichern diese Tabellen als **.csv-Dateien** in einem Ordner, den wir im nächsten Schritt benutzen. Sinnvoll ist eine Benennung mit dem aktuellen Datum. Wir löschen nun die Evaluierungs-Proben in RIDOM Seqsphere um eine Re-Prozessierung zu ermöglichen.
+Und nutzen die foldende Funktion:
 
-Wir aktivieren nun die neue Pipeline in RIDOM ()
+```{r}
+Re_Eval <- RIDOM_comptable_re_evaluate(
+  old_folder = 
+    "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_19/",
+  new_folder = 
+    "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_20/",
+  out_folder = 
+    "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/Vergleiche/test/")
+```
+
+Statt "test" sollte eine Benennung des Output-Ordners erfolgen, die klarmacht, welche Comparison Tables (welche Ordner, mit entsprechendem Datum) verglichen wurden. Im hier gezeigten Beispiel würde `2025_03_19_VS_2025_03_20` als Ordnername statt `test` verwendet werden.
+
+Die Funktion überschreibt aus Sicherheitsgründen keine Dateien. Wenn der Output-Ordner bereits existiert und mit den ensprechenden Dateien gefüllt ist, wird stattdessen ein Fehler ausgegeben. Soll die Evaluierung wirklich unter dem selben Namen wiederholt werden, muss der Ordner zuvor vom Nutzer gelöscht werden.

@@ -38,7 +38,15 @@ the corresponding dataframes are returned within a list.
 RIDOM_comptable_re_evaluate
 }
 \examples{
-foo <- RIDOM_comptable_re_evaluate("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_19/",
-"O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_20/",
-"O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/Vergleiche/test/")
+Re_Eval <- RIDOM_comptable_re_evaluate(
+old_folder =
+"O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_19/",
+new_folder =
+ "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_20/",
+ out_folder =
+ "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/Vergleiche/test/")
+
+}
+\seealso{
+\code{\link[=vignette]{vignette("QM_pipeline_evaluation")}}
 }
