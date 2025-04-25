@@ -43,11 +43,9 @@ Es beschreibt das Vorgehen zur Erstellung Evaluierungsauswertung wie für die je
 
 Nun können wir die Arbeit in R beginnen, dazu laden wir das Paket `luaRlp`:
 
-```{r setup, include=FALSE}
-suppressPackageStartupMessages(library(luaRlp, quietly = TRUE))
+```{r loadlib}
+library(luaRlp)
 ```
-
-`library(luaRlp)`
 
 Und nutzen die foldende Funktion:
 
@@ -64,3 +62,17 @@ Re_Eval <- RIDOM_comptable_re_evaluate(
 Statt "test" sollte eine Benennung des Output-Ordners erfolgen, die klarmacht, welche Comparison Tables (welche Ordner, mit entsprechendem Datum) verglichen wurden. Im hier gezeigten Beispiel würde `2025_03_19_VS_2025_03_20` als Ordnername statt `test` verwendet werden.
 
 Die Funktion überschreibt aus Sicherheitsgründen keine Dateien. Wenn der Output-Ordner bereits existiert und mit den ensprechenden Dateien gefüllt ist, wird stattdessen ein Fehler ausgegeben. Soll die Evaluierung wirklich unter dem selben Namen wiederholt werden, muss der Ordner zuvor vom Nutzer gelöscht werden.
+
+Die Dateien wurden nun in den angegebenen Output Ordner geschrieben. Zusätzlich gibt die Funktion eine Liste von tibbles ("tidyverse-Tabellen") zurück. Diese kann nun auch direkt in R analysiert werden:
+
+```{r echo=TRUE}
+library(magrittr)
+library(dplyr)
+
+Re_Eval["EHEC"]
+
+Re_Eval[["EHEC"]] %>%
+  select(where(is.numeric)) %>% 
+  colSums(na.rm = TRUE) 
+
+```

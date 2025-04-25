@@ -1,0 +1,53 @@
+---
+title: "EpiData_RIDOM"
+output:
+pdf_document:   
+latex_engine: lualatex
+vignette: >
+  %\VignetteIndexEntry{EpiData_RIDOM}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Erzeugen eines RIDOM-kompatiblen Datensatzes mit epidemiologischen Daten
+
+Die Funktion `create_Epidata()` ist das zentrale Werkzeug zur Generierung eines CSV-Exports aus aktuellen SurvNet-Daten, der direkt in die RIDOM-Datenbank übernommen werden kann. Dabei werden die Daten automatisiert aufbereitet, mit Geoinformationen und Gesundheitsamtskürzeln ergänzt und mit Labordaten aus unserem LIMS verknüpft.
+
+```{r loadlib, include=FALSE} 
+library(luaRlp)
+```
+
+Nach dem laden unseres Pakets (mit `library(luaRlp)`). Lässt sich die Funktion wie folgt ausführen:
+
+```{r topLevel}
+create_Epidata("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Export Merger/Import2.csv")
+```
+
+Dafür wird ein Export aus unserem LIMS benötigt (hier `Import2.csv` abgelegt unter `O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Export Merger/`)
+
+Dadurch wird eine Dateien zm Import in RIDOM ("Import Metadata") generiert. Diese Datei eignet sich zur automatischen Zuweisung des "Projekts" und zum automatischen Erkennen von Spalten für RIDOM Datenbank-Felder.
+
+Soll darüber hinaus eine Datei mit "problematischen Einträgen" aus dem LIMS generiert werden kann dies mithilfe des folgenden Codes geschehen:
+
+```{r problems}
+create_Epidata("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Export Merger/Import2.csv", 
+                problems = "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Export Merger/Problems.csv")
+```
+
+Wenn hier Probleme durch manuelle Einträge gelöst werden, ist darauf zu achten, dass die editierte Datei nicht durch erneutes Ausführen des Codes überschrieben wird!
+
+Eine `Problems.csv` Datei mit solchen "gelösten Problemen", also angepassten SurvNet Aktenzeichen lässt sich wiederum als neue Import-Datei verwenden.
+
+## Hinweis zur ODBC-Verbindung
+
+Die Funktion `import_SurvNet()` erwartet genau *eine* gültige ODBC-Quelle. Wenn keine oder mehrere Quellen gefunden werden, erscheint eine von zwei Fehlermeldungen:
+
+-   Multiple potential SurvNet data sources detected
+
+-   No data source detected. Please configure ODBC.
+
+Zur korrekten Konfiguration der Datenquelle kontaktieren Sie bei Problemen bitte per Flurfunk oder E-Mail [Emanuel Heitlinger und Anja Schoeps](mailto:anja.schoeps@lua.rlp.de;%20emanuel.heitlinger@lua.rlp.de).

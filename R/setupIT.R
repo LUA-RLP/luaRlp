@@ -22,36 +22,36 @@
 }
 
 
-.onLoad <- function(libname, pkgname) {
-  # Code to execute when the package is loaded
-  packageStartupMessage(
-    "\033[36m⚙️",
-    "Laden der R Kofiguration f\u00fcr das LUA RLP mittels Paket ",
-    pkgname, "! \033[36m⚙️")
-  if (.has_net()) {
-    packageStartupMessage("\033[32m ✅",  "Netzwerkverbindung vorhanden!")
-    } else {
-      packageStartupMessage(
-        "\033[31m❌ ",
-        "Netzwerkverbindung konnte (mit manuellen proxy ",
-        "setings) nicht hergestellt werden",
-        "R nur eingeschränkt nutzbar!")
-    }
-  if(R.Version()$version.string == "R version 4.4.0 (2024-04-24 ucrt)") {
-    packageStartupMessage(
-      "\033[32m ✅",
-      "Wir nutzen ", R.Version()$version.string, ", ",
-      "\"",R.Version()$nickname, "\", ",
-      "unser Standard am LUA RLP!")
-  } else{
-    packageStartupMessage(
-      "\033[31m❌ ",
-      "Diese Installation nutzt ",
-      R.Version()$version.string, ", ",
-      "\" ", R.Version()$nickname,  "\", ",
-      "NON-STANDARD am LUA RLP!")
-  }
-  packageStartupMessage("\033[31m💉\033[34m📊 ",
-                        "Viel Spaß bei wichtigen Amtsaufgaben in R!",
-                        " \033[35m🦠\033[32m🏥")
-}
+# .onLoad <- function(libname, pkgname) {
+#   # Code to execute when the package is loaded
+#   packageStartupMessage(
+#     "\033[36m⚙️",
+#     "Laden der R Kofiguration f\u00fcr das LUA RLP mittels Paket ",
+#     pkgname, "! \033[36m⚙️")
+#   if (.has_net()) {
+#     packageStartupMessage("\033[32m ✅",  "Netzwerkverbindung vorhanden!")
+#     } else {
+#       packageStartupMessage(
+#         "\033[31m❌ ",
+#         "Netzwerkverbindung konnte (mit manuellen proxy ",
+#         "setings) nicht hergestellt werden",
+#         "R nur eingeschränkt nutzbar!")
+#     }
+#   if(R.Version()$version.string == "R version 4.4.0 (2024-04-24 ucrt)") {
+#     packageStartupMessage(
+#       "\033[32m ✅",
+#       "Wir nutzen ", R.Version()$version.string, ", ",
+#       "\"",R.Version()$nickname, "\", ",
+#       "unser Standard am LUA RLP!")
+#   } else{
+#     packageStartupMessage(
+#       "\033[31m❌ ",
+#       "Diese Installation nutzt ",
+#       R.Version()$version.string, ", ",
+#       "\" ", R.Version()$nickname,  "\", ",
+#       "NON-STANDARD am LUA RLP!")
+#   }
+#   packageStartupMessage("\033[31m💉\033[34m📊 ",
+#                         "Viel Spaß bei wichtigen Amtsaufgaben in R!",
+#                         " \033[35m🦠\033[32m🏥")
+# }
