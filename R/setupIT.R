@@ -10,12 +10,27 @@
 
 
 
-.has_net <- function(timeout = 15){
+
+
+#' lua_is_online Überprüfe ob R online-Zugang hat
+#'
+#' Die Funktion checkt ob innerhalb einer gewissen Latenzzeit (timeout) eine
+#' Website erreicht werden kann. Dies ist besonders nützlich um bei
+#' Fehlermeldugnen während der Paketinstallation zu prüfen, ob die Proxy-
+#' Einstellungen in R korrekt sind und eine Netzwerkverbindung zulassen
+#'
+#' @param timeout
+#'
+#' @return
+#' @export
+#'
+#' @examples
+lua_is_online <- function(timeout = 15, url = "http://www.google.com"){
   tryCatch({
-    url <- "http://www.google.com"
     setTimeLimit(elapsed = timeout, transient = TRUE)  # Enforce timeout
     con <- url(url, "rb")
     close(con)
+    message("\033[32m ✅",  "Netzwerkverbindung vorhanden!")
     TRUE
   },
   error = function(e) FALSE, finally = setTimeLimit())
@@ -28,7 +43,7 @@
 #     "\033[36m⚙️",
 #     "Laden der R Kofiguration f\u00fcr das LUA RLP mittels Paket ",
 #     pkgname, "! \033[36m⚙️")
-#   if (.has_net()) {
+#   if (lua_is_online()) {
 #     packageStartupMessage("\033[32m ✅",  "Netzwerkverbindung vorhanden!")
 #     } else {
 #       packageStartupMessage(

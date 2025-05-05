@@ -15,6 +15,14 @@ möchsten, können zum Installieren des Pakets folgenden Code ausführen
 
     remotes::install_github("derele/luaRlp", build_vignettes = TRUE)
 
+Falls Probleme bei der Installation auftauchen sind diese meist durch
+eine fehlende Proxy-Konfiguration verursacht. Diese lassen sich
+(innerhalb des LUA) durch Ausführen des folgenden Codes lösen:
+
+    source("O:/Abteilung Humanmedizin (AHM)/Referat 32/R_setup/lua_proxy_networking.R")
+
+Danach sollte die Installation durchführbar sein.
+
 Das Paket Laden mit
 
 ``` r
@@ -35,4 +43,9 @@ Das Paket hat mehrere wichtige Funktionen für unsere Amtsaufgaben:
 
 <!-- -->
 
-    vignette("EpiData_RIDOM")
+    vignette("QM_pipeline_evaluation")
+
+Diese Art der Dokumentation stellt sicher, dass die Funktionen wie
+Dokumentiert auf dem Rechner des Nutzers ausführbar sind (die Funktionen
+werden lokal auf dem Nutzer-Rechner ausgeführt um die Dokumentation zu
+erstellen).
