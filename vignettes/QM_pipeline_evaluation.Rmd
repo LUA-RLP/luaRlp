@@ -54,12 +54,10 @@ Re_Eval <- RIDOM_comptable_re_evaluate(
   old_folder = 
     "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_19/",
   new_folder = 
-    "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_20/",
-  out_folder = 
-    "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/Vergleiche/test/")
+    "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_20/")
 ```
 
-Statt "test" sollte eine Benennung des Output-Ordners erfolgen, die klarmacht, welche Comparison Tables (welche Ordner, mit entsprechendem Datum) verglichen wurden. Im hier gezeigten Beispiel würde `2025_03_19_VS_2025_03_20` als Ordnername statt `test` verwendet werden.
+Statt des Standardwerts (das Verzeichnis in dem R momentan läuft) sollte eine Nennung des Output-Ordners erfolgen um ein Speichern an einem sinnvollen Ort durchzuführen (Nutzen sie "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/Vergleiche/"). Darüber hinaus sollte wie im Standartwert der Funktion hinterlegt, festgehalten werden, welche Comparison Tables (welche Ordner, benannt mit entsprechendem Datum) verglichen wurden. Im hier gezeigten Beispiel würde `2025_03_19_VS_2025_03_20_timestamp` als Ordnername auch erstellt wenn vor Ausführen des o.g. Befehls ```setwd("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/Vergleiche")``` ausgeführt wird.
 
 Die Funktion überschreibt aus Sicherheitsgründen keine Dateien. Wenn der Output-Ordner bereits existiert und mit den ensprechenden Dateien gefüllt ist, wird stattdessen ein Fehler ausgegeben. Soll die Evaluierung wirklich unter dem selben Namen wiederholt werden, muss der Ordner zuvor vom Nutzer gelöscht werden.
 

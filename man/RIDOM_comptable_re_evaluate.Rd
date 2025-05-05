@@ -7,7 +7,8 @@
 RIDOM_comptable_re_evaluate(
   old_folder,
   new_folder,
-  out_folder,
+  out_folder = paste0(basename(old_folder), "_VS_", basename(new_folder), "_",
+    format(Sys.time(), "\%Y-\%m-\%d_\%H-\%M-\%S"), "/"),
   wanted_cols = c("Sample ID", "Perc. Good Targets", "Avg. Coverage (Assembled)", "ST",
     "ST Warwick", "Complex Type", "N50 (Assembled)", "O Type", "H Type", "Serovar")
 )
@@ -21,7 +22,9 @@ the old state of exports in a routin re-evaluation}
 format, these should be "new", e.g. from a novel changed pipeline or simply
 the new state of exports in a routine re-evaluation}
 
-\item{out_folder}{output folder for the comparison tables of old vs. new}
+\item{out_folder}{output folder for the comparison tables of old vs. new. By
+default this will be set to "old_folder_VS_new_folder_timestamp/" in the
+current working directory.}
 
 \item{wanted_cols}{the columns that should be compared. Defaults to
 "Sample ID", "Perc. Good Targets", "Avg. Coverage (Assembled)", "ST"
@@ -42,9 +45,7 @@ Re_Eval <- RIDOM_comptable_re_evaluate(
 old_folder =
 "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_19/",
 new_folder =
- "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_20/",
- out_folder =
- "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/Vergleiche/test/")
+ "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_20/")
 
 }
 \seealso{

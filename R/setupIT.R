@@ -21,10 +21,12 @@
 #'
 #' @param timeout
 #'
-#' @return
+#' @return logical indicating whether you're online
+#'
 #' @export
 #'
-#' @examples
+#' @examples lua_is_online()
+#'
 lua_is_online <- function(timeout = 15, url = "http://www.google.com"){
   tryCatch({
     setTimeLimit(elapsed = timeout, transient = TRUE)  # Enforce timeout

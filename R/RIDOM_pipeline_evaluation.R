@@ -16,7 +16,9 @@
 #' "Complex Type", "N50 (Assembled)", "O Type" (project Produktiv_EHEC),
 #' "H Type" (project Produktiv_EHEC) and "Serovar" (project Produkiv_Salmonella)
 #'
-#' @param out_folder output folder for the comparison tables of old vs. new
+#' @param out_folder output folder for the comparison tables of old vs. new. By
+#' default this will be set to "old_folder_VS_new_folder_timestamp/" in the
+#' current working directory.
 #'
 #' @return csv files are written into a folder: One file for each Assembly
 #' (SOP), EHEC, Salmonella, Listeria, MRSA and Legionella (each an own PRM),
@@ -31,58 +33,64 @@
 #'old_folder =
 #'"O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_19/",
 #'new_folder =
-#'  "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_20/",
-#'  out_folder =
-#'  "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/Vergleiche/test/")
+#'  "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_20/")
 #'
-RIDOM_comptable_re_evaluate <- function (old_folder, new_folder, out_folder,
-                                         wanted_cols = c(
-                                           "Sample ID",
-                                           "Perc. Good Targets",
-                                           "Avg. Coverage (Assembled)",
-                                           "ST", "ST Warwick",
-                                           "Complex Type",
-                                           "N50 (Assembled)",
-                                           "O Type", "H Type",
-                                           "Serovar")){
-  read_file_folder <- function (path) {
-    message("Reading: ")
-    files <- list.files(path = path, pattern = "*.csv", full.names = TRUE)
-    dfs <- lapply(files, function (x) {
-      message(x)
-      suppressMessages(
-        suppressWarnings(
-          readr::read_delim(x, delim = ";",
-                            locale = readr::locale(decimal_mark = "."),
-                            show_col_types = FALSE,
-                            name_repair = "minimal")
+RIDOM_comptable_re_evaluate <-
+  function (old_folder, new_folder,
+            out_folder = paste0(basename(old_folder),
+                                "_VS_",
+                                basename(new_folder),
+                                "_",
+                                format(Sys.time(),
+                                       "%Y-%m-%d_%H-%M-%S"),
+                                "/"),
+            wanted_cols = c(
+              "Sample ID",
+              "Perc. Good Targets",
+              "Avg. Coverage (Assembled)",
+              "ST", "ST Warwick",
+              "Complex Type",
+              "N50 (Assembled)",
+              "O Type", "H Type",
+              "Serovar")){
+    read_file_folder <- function (path) {
+      message("Reading: ")
+      files <- list.files(path = path, pattern = "*.csv", full.names = TRUE)
+      dfs <- lapply(files, function (x) {
+        message(x)
+        suppressMessages(
+          suppressWarnings(
+            readr::read_delim(x, delim = ";",
+                              locale = readr::locale(decimal_mark = "."),
+                              show_col_types = FALSE,
+                              name_repair = "minimal")
+          )
         )
-      )
-    })
-    dfs <- lapply(dfs, function(x) x[colnames(x)%in%wanted_cols])
-    names(dfs) <- basename(files)
-    dfs
-  }
-  old_dfs <- read_file_folder(path = old_folder)
-  new_dfs <- read_file_folder(path = new_folder)
+      })
+      dfs <- lapply(dfs, function(x) x[colnames(x)%in%wanted_cols])
+      names(dfs) <- basename(files)
+      dfs
+    }
+    old_dfs <- read_file_folder(path = old_folder)
+    new_dfs <- read_file_folder(path = new_folder)
 
-  ass_stats <- combine_assembly_stats(old_dfs, new_dfs)
-  ehec_stats <- combine_ehec_stats(old_dfs, new_dfs)
-  salmonella_stats <- combine_salmonella_stats(old_dfs, new_dfs)
-  other_stats <- lapply(c("Legionella", "MRSA", "Listeria"), function(x) {
-    combine_general_stats(old_dfs, new_dfs, what = x)
-  })
-  names(other_stats) <- c("Legionella", "MRSA", "Listeria")
-  all_stats <- c(list(Assembly = ass_stats,
-                      EHEC = ehec_stats,
-                      Salmonella = salmonella_stats),
-                      other_stats)
-  if(!dir.exists(out_folder)){
-    message("Ordner ", out_folder, " wird angelegt.")
-    dir.create(out_folder)
-  }
-  message("Writing evaluation tables comparing old and new results to:")
-  for(i in seq_along(all_stats)){
+    ass_stats <- combine_assembly_stats(old_dfs, new_dfs)
+    ehec_stats <- combine_ehec_stats(old_dfs, new_dfs)
+    salmonella_stats <- combine_salmonella_stats(old_dfs, new_dfs)
+    other_stats <- lapply(c("Legionella", "MRSA", "Listeria"), function(x) {
+      combine_general_stats(old_dfs, new_dfs, what = x)
+    })
+    names(other_stats) <- c("Legionella", "MRSA", "Listeria")
+    all_stats <- c(list(Assembly = ass_stats,
+                        EHEC = ehec_stats,
+                        Salmonella = salmonella_stats),
+                   other_stats)
+    if(!dir.exists(out_folder)){
+      message("Ordner ", getwd(), out_folder, " wird angelegt.")
+      dir.create(out_folder)
+    }
+    message("Writing evaluation tables comparing old and new results to:")
+    for(i in seq_along(all_stats)){
       path <- paste0(out_folder,  names(all_stats)[[i]], ".csv ")
       if(file.exists(path)){
         stop("Datei ", path, "ist bereits vorhanden! ",
@@ -93,8 +101,8 @@ RIDOM_comptable_re_evaluate <- function (old_folder, new_folder, out_folder,
       readr::write_csv2(all_stats[[i]], path)
       message(path)
     }
-  all_stats
-}
+    all_stats
+  }
 
 
 
