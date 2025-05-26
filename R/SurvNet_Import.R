@@ -99,6 +99,7 @@ create_Epidata <- function(LIMS_link_file,
       stop("Choose a type of problem to report when requesting problems output")
     }
   }
+  return(Out_EpiDaten)
 }
 
 #' import_SurvNet

@@ -24,7 +24,7 @@ library(luaRlp)
 Nach dem laden unseres Pakets (mit `library(luaRlp)`). Lässt sich die Funktion wie folgt ausführen:
 
 ```{r topLevel}
-create_Epidata("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Export Merger/Import2.csv")
+Epidata4Import <- create_Epidata("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Export Merger/Import2.csv")
 ```
 
 Dafür wird ein Export aus unserem LIMS benötigt (hier `Import2.csv` abgelegt unter `O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Export Merger/`)
@@ -34,13 +34,30 @@ Dadurch wird eine Dateien zm Import in RIDOM ("Import Metadata") generiert. Dies
 Soll darüber hinaus eine Datei mit "problematischen Einträgen" aus dem LIMS generiert werden kann dies mithilfe des folgenden Codes geschehen:
 
 ```{r problems}
-create_Epidata("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Export Merger/Import2.csv", 
+Epidata4Import <- create_Epidata("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Export Merger/Import2.csv", 
                 problems = "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Export Merger/Problems.csv")
 ```
 
 Wenn hier Probleme durch manuelle Einträge gelöst werden, ist darauf zu achten, dass die editierte Datei nicht durch erneutes Ausführen des Codes überschrieben wird!
 
 Eine `Problems.csv` Datei mit solchen "gelösten Problemen", also angepassten SurvNet Aktenzeichen lässt sich wiederum als neue Import-Datei verwenden.
+
+## Trouble shooting (Proben ohne Epidaten)
+
+Gibt es Probleme die nicht anhand der entstehenden Dateien offensichtlich sind,
+können wir in R weiter nachforschen. Wir können dazu z.B. die in SurvNet 
+verfügbaren Rohdaten im Ursprungsformat betrachten: 
+
+```{r}
+## SurvNet Rohdaten 
+Snet <- import_SurvNet()
+
+any(Snet$Aktenzeichen%in%"SAL2024-2072")
+
+```
+Dieser Code überprüft z.B. ob ein Aktenzeichen in seiner Roh-Form im Datensatz 
+vorhanden ist. 
+
 
 ## Hinweis zur ODBC-Verbindung
 
