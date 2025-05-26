@@ -15,9 +15,14 @@ ui <- fluidPage(
       tags$p("Einlesen der .csv Datei(en) aus:"),
       tags$p("📂 O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/qPCR_CSVs/"),
 
+      radioButtons("Format", "Welches CSV-Format?",
+                   choices = c(";  DE (ab Jun 2025)" = "semicolon",
+                               ",  EN (vor Jun 2025)" = "comma"),
+                   selected = "semicolon"),
+
       radioButtons("file_choice", "Wie viele Dateien möchten Sie hochladen?",
                    choices = c("Eine Datei" = "one", "Zwei Dateien" = "two"),
-                   selected = "two"),
+                   selected = "one"),
 
       fileInput("first_file", "Datei 1 hochladen",
                 accept = c(".csv"),
@@ -28,6 +33,7 @@ ui <- fluidPage(
         fileInput("second_file", "Datei 2 hochladen",
                   accept = c(".csv"),
                   placeholder = "Wähle die zweite Datei")
+
       ),
 
       actionButton("process", "Daten verarbeiten"),
@@ -53,10 +59,23 @@ server <- function(input, output, session) {
 
     warning_msg(NULL)
 
-    tab1 <- read.csv(input$first_file$datapath, skip = 19, header = TRUE)
+
+    sep <- switch(input$Format,
+                  "semicolon" = ";",
+                  "comma" = ",")
+
+    dec <- switch(input$Format,
+                  "semicolon" = ",",  # German format
+                  "comma" = ".")      # English format
+
+
+    tab1 <- read.csv(input$first_file$datapath, sep = sep, dec = dec, skip = 19,
+                     header = TRUE)
+
 
     if (!is.null(input$second_file) && input$file_choice == "two") {
-      tab2 <- read.csv(input$second_file$datapath, skip = 19, header = TRUE)
+      tab2 <- read.csv(input$second_file$datapath, sep = sep, dec = dec,
+                       skip = 19, header = TRUE)
 
       # Count non-matching sample names
       incomp <- sum(!(tab1$Sample %in% tab2$Sample)) +
