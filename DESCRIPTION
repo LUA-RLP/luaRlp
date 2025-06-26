@@ -25,7 +25,9 @@ Imports: odbc,
     ggplot2,
     viridis,
     lubridate,
-    stringr
+    stringr,
+    shinyFiles,
+    zip
 Suggests: rmarkdown,
     knitr
 VignetteBuilder: knitr
