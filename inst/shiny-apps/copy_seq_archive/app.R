@@ -3,7 +3,6 @@ library(shinyFiles)
 library(zip)
 library(readr)
 library(shinycssloaders)
-library(callr)
 
 # --- Zugangsdaten einlesen ---
 ALLOWED_USERS <- read.csv("/home/HeitlingerE/allowed_users.csv", stringsAsFactors = FALSE)
@@ -11,6 +10,9 @@ ALLOWED_USERS <- setNames(as.list(ALLOWED_USERS$password), ALLOWED_USERS$user)
 
 # --- Erlaubte Wurzelverzeichnisse (NUR ARCHIV) ---
 ALLOWED_DIRS <- c("ARCHIVE" = "/data/ARCHIVED_RUNS/")
+
+# --- Zielverzeichnis für ZIP-Dateien ---
+TMP_ZIP_DIR <- "/data/tmp_DL_transfer"
 
 ui <- fluidPage(
   titlePanel("📦 Sequenzdaten-Archiv-Download"),
@@ -25,7 +27,7 @@ ui <- fluidPage(
         tags$hr(),
 
         h4("🔎 Für einzelne Proben fastq-Dateien suchen"),
-        p("Gib eine Probe-ID oder ein Muster (Regex) ein, z.\u202fB. '3263-2025-000162' oder '3263-2025-00.*'"),
+        p("Gib eine Probe-ID oder ein Muster (Regex) ein, z. B. '3263-2025-000162' oder '3263-2025-00.*'"),
         textInput("text_input_id", "Probe-ID oder Suchmuster:"),
         actionButton("manual_search_btn", "Dateien suchen (Einzeleingabe)"),
         tags$hr(),
@@ -39,7 +41,6 @@ ui <- fluidPage(
         h4("📦 Gefundene/ausgewählte Dateien herunterladen"),
         withSpinner(textOutput("search_info")),
         withSpinner(uiOutput("found_files_ui")),
-        uiOutput("cancel_ui"),
         downloadButton("download_zip", "ZIP herunterladen")
       ),
 
@@ -62,8 +63,6 @@ server <- function(input, output, session) {
   search_mode <- reactiveVal("none")
   creds <- reactiveValues(authorized = FALSE)
   found_files <- reactiveVal(NULL)
-  zip_process <- reactiveVal(NULL)
-  copying <- reactiveVal(FALSE)
 
   output$login_ui <- renderUI({
     if (!creds$authorized) {
@@ -157,28 +156,6 @@ server <- function(input, output, session) {
     paste(f, collapse = "\n")
   })
 
-  output$cancel_ui <- renderUI({
-    if (copying()) {
-      actionButton("cancel_zip", "⛔ Kopiervorgang abbrechen", class = "btn-danger")
-    }
-  })
-
-  observeEvent(input$cancel_zip, {
-    proc <- zip_process()
-    if (!is.null(proc) && proc$is_alive()) {
-      proc$kill()
-      copying(FALSE)
-      showNotification("❌ ZIP-Vorgang abgebrochen!", type = "warning")
-    }
-  })
-
-  session$onSessionEnded(function() {
-    proc <- zip_process()
-    if (!is.null(proc) && proc$is_alive()) {
-      proc$kill()
-    }
-  })
-
   output$download_zip <- downloadHandler(
     filename = function() {
       paste0("download_", Sys.Date(), ".zip")
@@ -190,24 +167,16 @@ server <- function(input, output, session) {
         return(NULL)
       }
 
-      copying(TRUE)
-      output$found_files_ui <- renderUI({ HTML("<b>⏳ ZIP-Vorgang läuft...</b>") })
+      # Ziel-ZIP-Datei temporär in /data/tmp_DL_transfer
+      zip_file <- tempfile(tmpdir = TMP_ZIP_DIR, fileext = ".zip")
 
-      p <- callr::r_bg(function(files, file) {
-        zip::zipr(zipfile = file, files = files, root = "/")
-      }, args = list(files = files, file = file))
-      zip_process(p)
-
-      while (p$is_alive()) {
-        Sys.sleep(0.5)
-      }
-
-      copying(FALSE)
-
-      if (p$get_exit_status() != 0) {
-        showNotification("❌ ZIP-Vorgang fehlgeschlagen oder abgebrochen", type = "error")
+      tryCatch({
+        zip::zipr(zipfile = zip_file, files = files, root = "/")
+        file.copy(zip_file, file, overwrite = TRUE)
+      }, error = function(e) {
+        showNotification("❌ Fehler beim Erstellen der ZIP-Datei", type = "error")
         return(NULL)
-      }
+      })
     },
     contentType = "application/zip"
   )
