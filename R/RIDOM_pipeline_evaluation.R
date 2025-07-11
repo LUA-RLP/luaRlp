@@ -253,7 +253,7 @@ tabulate_pipeline_QM <- function(x) {
         list(
           "n Proben verbessert" = ~as.character(length(.x[.x>0])),
           "n Proben gleich" = ~as.character(length(.x[.x==0])),
-          "n Proben gleich verschlechtert" = ~as.character(length(.x[.x<0])),
+          "n Proben verschlechtert" = ~as.character(length(.x[.x<0])),
           "arith. Mittel Veränderung" =
             ~as.character(mean(.x, na.rm = TRUE)),
           Bewertung =
@@ -276,10 +276,60 @@ tabulate_pipeline_QM <- function(x) {
 }
 
 
+
 create_QMpdf_for_signatures <- function (qm_list = NULL,
                                          old_folder = NULL,
                                          new_folder = NULL,
                                          output_pdf){
+
+  ### Dumping some data on how the QM documents are called... quite the quality
+  ### HACK
+  qm_meta <- tibble::tibble(
+    name   = c("Assembly", "EHEC", "Salmonella", "Legionella",
+               "MRSA", "Listeria"),
+    title  = c("Assemblierung von „Short-Read“-Sequenz-Daten zur
+             Rekonstruktion von Bakteriengenomen",
+               "Genotypisierung von Escherichia coli aus Genomsequenzdaten im
+             FASTA-Format mittels Hausverfahren",
+               "Genotypisierung von Salmonella enterica aus Genomsequenzdaten im
+             FASTA-Format mittels Hausverfahren",
+               "Genotypisierung von Staphylococcus aureus aus Genomsequenzen im
+             FASTA-Format mittels Hausverfahren",
+               "Genotypisierung von Legionella pneumophila aus Genomsequenzdaten
+             im FASTA-Format mittels Hausverfahren",
+               "Genotypisierung von Listeria monocytogenes aus Genomsequenzdaten im FASTA-Format mittels Hausverfahren"),
+    code   = c("SOP P 32.6 0004 01",
+               "PRM 0 32.6 0004 01",
+               "PRM 0 32.6 0003 01",
+               "PRM 0 32.6 0007 01",
+               "PRM 0 32.6 0006 01",
+               "PRM 0 32.6 0005 01")
+  )
+
+  write_latex_header <- function(name, meta_df) {
+    meta <- meta_df[meta_df$name == name, ]
+    c(
+      "\\noindent",
+      "\\begin{tabular}{|m{3cm}|m{10cm}|m{4cm}|}",
+      "\\hline",
+      "\\multirow{2}{*}{%",
+      "  \\centering",
+      paste0(" \\raisebox{-0.8cm}{\\includegraphics[height=1.0cm,keepaspectratio]{",
+             system.file("QM_header/logo.png", package = "luaRlp"),
+             "}}%"),
+      "}",
+      "& \\textbf{Landesuntersuchungsamt} & \\RaggedLeft Anhang 2, Seite 1 von 1 \\\\",
+      "\\cline{2-3}",
+      paste0("& \\textbf{", meta$title, "} & \\RaggedLeft ", meta$code, " \\\\"),
+      "\\hline",
+      "\\end{tabular}",
+      "",
+      "\\vspace{1cm}",
+      "\\noindent",
+      "\\bigskip",
+      ""
+    )
+  }
 
 
   ## Step 1: Run the full tabulation
@@ -295,7 +345,6 @@ create_QMpdf_for_signatures <- function (qm_list = NULL,
   temp_rmd <- tempfile(fileext = ".Rmd")
   writeLines(c(
     "---",
-    "title: 'QM Bericht zur Signaturfreigabe'",
     "output: pdf_document",
     "includes:",
     "in_header: null",
@@ -305,6 +354,8 @@ create_QMpdf_for_signatures <- function (qm_list = NULL,
     "header-includes:",
       "- \\usepackage{booktabs}",
       "- \\usepackage[table]{xcolor}",
+      "- \\usepackage{multirow}",
+      "- \\usepackage{ragged2e}",
     "fontsize: 10pt",
     "geometry: margin=2cm",
     "---",
@@ -322,9 +373,7 @@ create_QMpdf_for_signatures <- function (qm_list = NULL,
     "",
     "```{r tables, results='asis'}",
     "for (name in names(qm_list)) {",
-    "  cat('\\\\includegraphics[width=\\\\textwidth]{C:/Users/HeitlingerE/Pictures/MRSA_header.png}',
-    '\\n\\n')",
-    "  cat('##', name, '\\n\\n')",
+    "  cat(paste(write_latex_header(name, qm_meta), collapse = '\n'))",
     "  cat('Vergleich von',
     '\\n\\n',
     attributes(qm_list)$old_folder,
@@ -365,9 +414,5 @@ create_QMpdf_for_signatures <- function (qm_list = NULL,
   )
 }
 
-
-# Re_Eval[["EHEC"]] %>%
-#   kable('latex', booktabs = TRUE, linesep = '', caption = "EHEC") %>%
-#   kable_styling(latex_options = c('striped', 'hold_position'))
 
 
