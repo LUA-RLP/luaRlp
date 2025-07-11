@@ -101,6 +101,9 @@ RIDOM_comptable_re_evaluate <-
       readr::write_csv2(all_stats[[i]], path)
       message(path)
     }
+    attr(all_stats, "old_folder") <- old_folder
+    attr(all_stats, "new_folder") <- new_folder
+    attr(all_stats, "out_folder") <- out_folder
     all_stats
   }
 
@@ -122,9 +125,9 @@ combine_assembly_stats <- function(old, new) {
       dplyr::inner_join(new[[i]], by = "Sample ID",  suffix = c("_old", "_new")) %>%
       dplyr::select(.data$`Sample ID`, .data$`N50 (Assembled)_old`,
                     .data$`N50 (Assembled)_new`) %>%
-      dplyr::mutate(diff_perc = (.data$`N50 (Assembled)_new` -
+      dplyr::mutate(diff_perc = ((.data$`N50 (Assembled)_new` -
                                    .data$`N50 (Assembled)_old`) /
-                      .data$`N50 (Assembled)_old`)
+                      .data$`N50 (Assembled)_old`)*100)
   })
   do.call("rbind", ass_list)
 }
@@ -215,4 +218,156 @@ combine_general_stats <- function(old, new, what) {
                   .data$Targets_Eval, .data$ST_Eval, .data$CT_Eval)
   comb
 }
+
+#' tabulate_pipeline_QM
+#'
+#' @param a list of tibbles from combine_general_stats
+#'
+#' @return a list of summarized tibbles
+#'
+#' @import tidyr
+#'
+#' @export
+#'
+tabulate_pipeline_QM <- function(x) {
+  ## Slighly special for the Assembly SOP
+  SOP <- x[["Assembly"]] %>%
+    select(where(is.numeric)) %>%
+    summarize(
+      "n Proben erhöht"     = sum(diff_perc > 0),
+      "n Proben gleich"     = sum(diff_perc == 0),
+      "n Proben verringert" = sum(diff_perc < 0),
+      "n Proben >= 20% erhöht"     = sum(diff_perc >= 20),
+      "n Proben innerhalb 20% verändert"     = sum(abs(diff_perc) < 20 ),
+      "n Proben >= 20% verringert" = sum(diff_perc <= -20),
+      "Bewertung (arith. Mittel >= -20%)" = ifelse(mean(diff_perc <= -20),
+                         "NICHT erfolgreich", "ERFOLGREICH")) %>%
+    mutate(across(everything(), as.character)) %>%
+    tidyr::pivot_longer(everything(), names_to = "N50 Veränderung", values_to = "Wert")
+  ## Same for each Prüfmethode
+  PRMs <- lapply(x[names(x) != "Assembly"], function(stab){
+    stab %>%
+      select(where(is.numeric)) %>%
+      summarise(across(
+        everything(),
+        list(
+          "n Proben verbessert" = ~as.character(length(.x[.x>0])),
+          "n Proben gleich" = ~as.character(length(.x[.x==0])),
+          "n Proben gleich verschlechtert" = ~as.character(length(.x[.x<0])),
+          "arith. Mittel Veränderung" =
+            ~as.character(mean(.x, na.rm = TRUE)),
+          Bewertung =
+            ~ifelse(mean(.x, na.rm = TRUE) > 0,
+                    "BESTANDEN",
+                    ifelse(mean(.x, na.rm = TRUE) == 0,
+                           "BESTANDEN", "EINZELWERTKONTROLLE!!!"))
+        ),
+        .names = "{.col};{.fn}"
+      )) %>%
+      tidyr::pivot_longer(cols = everything(), names_to = c("variable", "stat"),
+                   names_sep = ";") %>%
+      tidyr::pivot_wider(names_from = variable, values_from = value)
+  })
+  out <- c(Assembly = list(SOP), PRMs)
+  attr(out, "old_folder") <- attr(x, "old_folder")
+  attr(out, "new_folder") <- attr(x, "new_folder")
+  attr(out, "out_folder") <- attr(x, "out_folder")
+  out
+}
+
+
+create_QMpdf_for_signatures <- function (qm_list = NULL,
+                                         old_folder = NULL,
+                                         new_folder = NULL,
+                                         output_pdf){
+
+
+  ## Step 1: Run the full tabulation
+  if(!is.null(old_folder) & !is.null(new_folder)){
+  qm_list <- RIDOM_comptable_re_evaluate(old_folder, new_folder) %>%
+    tabulate_pipeline_QM()
+
+  }
+  temp_rdata <- tempfile(fileext = ".RData")
+  save(qm_list, file = temp_rdata)
+
+  # Step 3: Write temporary Rmd file
+  temp_rmd <- tempfile(fileext = ".Rmd")
+  writeLines(c(
+    "---",
+    "title: 'QM Bericht zur Signaturfreigabe'",
+    "output: pdf_document",
+    "includes:",
+    "in_header: null",
+    "before_body: null",
+    "after_body: null",
+    "keep_tex: true",
+    "header-includes:",
+      "- \\usepackage{booktabs}",
+      "- \\usepackage[table]{xcolor}",
+    "fontsize: 10pt",
+    "geometry: margin=2cm",
+    "---",
+    "",
+    "```{r setup, include=FALSE}",
+    "knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)",
+    "library(dplyr)",
+    "library(kableExtra)",
+    "library(tidyr)",
+    "library(luaRlp)",
+
+    paste0("load(\"", normalizePath(temp_rdata, winslash = "/"), "\")  # Loads qm_list"),
+
+    "```",
+    "",
+    "```{r tables, results='asis'}",
+    "for (name in names(qm_list)) {",
+    "  cat('\\\\includegraphics[width=\\\\textwidth]{C:/Users/HeitlingerE/Pictures/MRSA_header.png}',
+    '\\n\\n')",
+    "  cat('##', name, '\\n\\n')",
+    "  cat('Vergleich von',
+    '\\n\\n',
+    attributes(qm_list)$old_folder,
+    '\\n\\n',
+    'und',
+    '\\n\\n',
+    attributes(qm_list)$new_folder,
+    '\\n\\n')",
+    "  cat(",
+    "    qm_list[[name]] %>%",
+    "      kable('latex', booktabs = TRUE, linesep = '', caption = name) %>%",
+    "      kable_styling(latex_options = c('striped', 'hold_position'))",
+    "  )",
+    "  cat(
+        '\\n\\n',
+        'abgelegt in',
+        '\\n\\n',
+    attributes(qm_list)$out_folder,
+    '\\n\\n',
+        'Arbeitsverzeichnis:',
+        '\\n\\n',
+    getwd(),
+    '\\n\\n',
+    'Akutelle Datei:',
+    '\\n\\n',
+    output_pdf,
+    '\\n\\\\newpage\\n')",
+    "}",
+    "```"
+  ), con = temp_rmd)
+  message("using temporary file ", temp_rmd)
+  # Step 4: Render to PDF
+  message("writing to ", normalizePath(output_pdf, mustWork = FALSE))
+  rmarkdown::render(
+    input = temp_rmd,
+    output_file = normalizePath(output_pdf, mustWork = FALSE),
+    quiet = FALSE
+  )
+}
+
+
+# Re_Eval[["EHEC"]] %>%
+#   kable('latex', booktabs = TRUE, linesep = '', caption = "EHEC") %>%
+#   kable_styling(latex_options = c('striped', 'hold_position'))
+
 

@@ -45,6 +45,7 @@ Nun können wir die Arbeit in R beginnen, dazu laden wir das Paket `luaRlp`:
 
 ```{r loadlib}
 library(luaRlp)
+library(dplyr)
 ```
 
 Und nutzen die foldende Funktion:
@@ -74,3 +75,25 @@ Re_Eval[["EHEC"]] %>%
   colSums(na.rm = TRUE) 
 
 ```
+
+Zur Dokumentation im Papier-basierten QM-System muss darüber hinaus ein Ausdruck
+zur handschriftlichen Unterschrift produziert werden. 
+
+
+```{r echo=TRUE}
+# create_QMpdf_for_signatures(
+#   old_folder = 
+#     "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_19/",
+#   new_folder = 
+#     "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_20/",
+#   output_pdf = "test1.pdf"
+#   )
+Re_Eval %>% 
+  tabulate_pipeline_QM() %>%
+  create_QMpdf_for_signatures(output_pdf="C:/Users/HeitlingerE/Documents/luaRlp/test.pdf")
+
+```
+
+
+
+
