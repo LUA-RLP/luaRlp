@@ -147,19 +147,19 @@ combine_ehec_stats <- function(old, new) {
   comb <- oldEHEC %>%
     dplyr::inner_join(newEHEC, by = "Sample ID",  suffix = c("_old", "_new")) %>%
     dplyr::mutate(
-      Targets_Eval = sign(.data$`Perc. Good Targets_old` -
+      "% Good Targets" = sign(.data$`Perc. Good Targets_old` -
                             .data$`Perc. Good Targets_new`),
-      ST_Eval = as.numeric(!is.na(.data$`ST Warwick_old`) -
+      "MLST vorh." = as.numeric(!is.na(.data$`ST Warwick_old`) -
                              !is.na(.data$`ST Warwick_new`)),
-      CT_Eval = as.numeric(!is.na(.data$`Complex Type_old`) -
+      "cgMLST vorh." = as.numeric(!is.na(.data$`Complex Type_old`) -
                              !is.na(.data$`Complex Type_new`)),
-      HT_Eval = as.numeric(!is.na(.data$`H Type_old`) -
+      "H-ag. vorh." = as.numeric(!is.na(.data$`H Type_old`) -
                              !is.na(.data$`H Type_new`)),
-      OT_Eval = as.numeric(!is.na(.data$`O Type_old`) -
+      "O-ag. vorh." = as.numeric(!is.na(.data$`O Type_old`) -
                              !is.na(.data$`O Type_new`))
     ) %>%
-   dplyr::select(.data$`Sample ID`, .data$Targets_Eval, .data$ST_Eval,
-                 .data$CT_Eval, .data$HT_Eval, .data$OT_Eval)
+   dplyr::select(.data$`Sample ID`, .data$`% Good Targets`, .data$`MLST vorh.`,
+                 .data$`cgMLST vorh.`, .data$`H-ag. vorh.`, .data$`O-ag. vorh.`)
   comb
 }
 
@@ -178,16 +178,16 @@ combine_salmonella_stats <- function(old, new) {
   comb <- oldSal %>%
     dplyr::inner_join(newSal, by = "Sample ID",  suffix = c("_old", "_new")) %>%
     dplyr::mutate(
-      Targets_Eval = sign(.data$`Perc. Good Targets_old` -
+      "% Good Targets" = sign(.data$`Perc. Good Targets_old` -
                             .data$`Perc. Good Targets_new`),
-      ST_Eval = as.numeric(!is.na(.data$`ST_old`) - !is.na(.data$`ST_new`)),
-      CT_Eval = as.numeric(!is.na(.data$`Complex Type_old`) -
+      "MLST vorh." = as.numeric(!is.na(.data$`ST_old`) - !is.na(.data$`ST_new`)),
+      "cgMLST vorh." = as.numeric(!is.na(.data$`Complex Type_old`) -
                              !is.na(.data$`Complex Type_new`)),
-      SV_Eval = as.numeric(!is.na(.data$`Serovar_old`) -
+      "Serovar vorh." = as.numeric(!is.na(.data$`Serovar_old`) -
                              !is.na(.data$`Serovar_new`))
     ) %>%
-    dplyr::select(.data$`Sample ID`, .data$Targets_Eval, .data$ST_Eval,
-                  .data$CT_Eval, .data$SV_Eval)
+    dplyr::select(.data$`Sample ID`, .data$`% Good Targets`, .data$`MLST vorh.`,
+                  .data$`cgMLST vorh.`, .data$`Serovar vorh.`)
   comb
 }
 
@@ -209,13 +209,13 @@ combine_general_stats <- function(old, new, what) {
   comb <- oldThis %>%
     dplyr::inner_join(newThis, by = "Sample ID",  suffix = c("_old", "_new")) %>%
     dplyr::mutate(
-      Targets_Eval = sign(`Perc. Good Targets_old` - `Perc. Good Targets_new`),
-      ST_Eval = as.numeric(!is.na(.data$`ST_old`) - !is.na(.data$`ST_new`)),
-      CT_Eval = as.numeric(!is.na(.data$`Complex Type_old`) -
+      "% Good Targets" = sign(`Perc. Good Targets_old` - `Perc. Good Targets_new`),
+      "MLST vorh." = as.numeric(!is.na(.data$`ST_old`) - !is.na(.data$`ST_new`)),
+      "cgMLST vorh." = as.numeric(!is.na(.data$`Complex Type_old`) -
                              !is.na(.data$`Complex Type_new`))
     ) %>%
     dplyr::select(.data$`Sample ID`,
-                  .data$Targets_Eval, .data$ST_Eval, .data$CT_Eval)
+                  .data$`% Good Targets`, .data$`MLST vorh.`, .data$`cgMLST vorh.`)
   comb
 }
 
