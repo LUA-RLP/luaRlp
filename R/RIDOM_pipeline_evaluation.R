@@ -264,7 +264,7 @@ tabulate_pipeline_QM <- function(x) {
         ),
         .names = "{.col};{.fn}"
       )) %>%
-      tidyr::pivot_longer(cols = everything(), names_to = c("variable", "stat"),
+      tidyr::pivot_longer(cols = everything(), names_to = c("variable", "Parameter"),
                    names_sep = ";") %>%
       tidyr::pivot_wider(names_from = variable, values_from = value)
   })
@@ -280,7 +280,8 @@ tabulate_pipeline_QM <- function(x) {
 create_QMpdf_for_signatures <- function (qm_list = NULL,
                                          old_folder = NULL,
                                          new_folder = NULL,
-                                         output_pdf){
+                                         output_pdf,
+                                         temp_rmd = tempfile(fileext = ".Rmd")){
 
   ### Dumping some data on how the QM documents are called... quite the quality
   ### HACK
@@ -342,7 +343,6 @@ create_QMpdf_for_signatures <- function (qm_list = NULL,
   save(qm_list, file = temp_rdata)
 
   # Step 3: Write temporary Rmd file
-  temp_rmd <- tempfile(fileext = ".Rmd")
   writeLines(c(
     "---",
     "output: pdf_document",
@@ -382,9 +382,10 @@ create_QMpdf_for_signatures <- function (qm_list = NULL,
     '\\n\\n',
     attributes(qm_list)$new_folder,
     '\\n\\n')",
+    "  df <- qm_list[[name]]",
     "  cat(",
-    "    qm_list[[name]] %>%",
-    "      kable('latex', booktabs = TRUE, linesep = '', caption = name) %>%",
+    "    df %>%",
+    "      kable('latex', booktabs = TRUE, linesep = '', caption = NULL) %>%",
     "      kable_styling(latex_options = c('striped', 'hold_position'))",
     "  )",
     "  cat(
@@ -397,10 +398,22 @@ create_QMpdf_for_signatures <- function (qm_list = NULL,
         '\\n\\n',
     getwd(),
     '\\n\\n',
-    'Akutelle Datei:',
+    'Aktuelle Datei:',
     '\\n\\n',
     output_pdf,
-    '\\n\\\\newpage\\n')",
+    '\\n\\n',
+    '\\\\vspace{1cm}',
+    '\\\\noindent',
+    '\\\\textbf{Bewertung:} \\\\hrulefill',
+    '\\n\\n',
+    '\\\\vspace{1cm}',
+    '\\\\noindent',
+    '\\\\textbf{Datum:} \\\\hrulefill',
+    '\\n\\n',
+    '\\\\vspace{1cm}',
+    '\\\\noindent',
+    '\\\\textbf{Unterschrift Arbeitsbereichsleitung:} \\\\hrulefill',
+    '\\n\\\\newpage')",
     "}",
     "```"
   ), con = temp_rmd)
