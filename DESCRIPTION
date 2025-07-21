@@ -28,7 +28,8 @@ Imports: odbc,
     stringr,
     shinyFiles,
     zip,
-    shinycssloaders
+    shinycssloaders,
+    kableExtra
 Suggests: rmarkdown,
     knitr
 VignetteBuilder: knitr

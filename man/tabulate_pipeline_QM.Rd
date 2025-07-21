@@ -7,10 +7,10 @@
 tabulate_pipeline_QM(x)
 }
 \arguments{
-\item{a}{list of tibbles from combine_general_stats}
+\item{a}{list of tibbles from RIDOM_comptable_re_evaluate}
 }
 \value{
-a list of summarized tibbles
+a list of summarized tibbles comparing the new stats vs. the old
 }
 \description{
 tabulate_pipeline_QM

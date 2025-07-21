@@ -221,9 +221,9 @@ combine_general_stats <- function(old, new, what) {
 
 #' tabulate_pipeline_QM
 #'
-#' @param a list of tibbles from combine_general_stats
+#' @param a list of tibbles from RIDOM_comptable_re_evaluate
 #'
-#' @return a list of summarized tibbles
+#' @return a list of summarized tibbles comparing the new stats vs. the old
 #'
 #' @import tidyr
 #'
@@ -277,14 +277,28 @@ tabulate_pipeline_QM <- function(x) {
 
 
 
-create_QMpdf_for_signatures <- function (qm_list = NULL,
-                                         old_folder = NULL,
-                                         new_folder = NULL,
-                                         output_pdf,
+#' create_QMpdf_for_signatures
+#'
+#' Creates a pdf summarizing the comparison for the QM comparison and evaluation
+#' of bioinformatic pipelines
+#'
+#' @param qm_list a list of tibbles produced by tabulate_pipeline_QM
+#' @param output_pdf the output pdf (path) produced by the function (defaults to
+#' "QM_pipeline_", a timestamp, and the ending ".pdf".
+#' @param temp_rmd a temporary file to store the .Rmd (code) file
+#'
+#' @export
+#'
+create_QMpdf_for_signatures <- function (qm_list,
+                                         output_pdf =
+                                           paste0("QM_pipeline_",
+                                                  format(Sys.time(),
+                                                         "%Y-%m-%d_%H-%M-%S"),
+                                                  ".pdf"),
                                          temp_rmd = tempfile(fileext = ".Rmd")){
 
-  ### Dumping some data on how the QM documents are called... quite the quality
-  ### HACK
+  ### Dumping some data on how the QM documents are called... TODO if it gets
+  ### more complicated: pull out
   qm_meta <- tibble::tibble(
     name   = c("Assembly", "EHEC", "Salmonella", "Legionella",
                "MRSA", "Listeria"),
@@ -332,13 +346,7 @@ create_QMpdf_for_signatures <- function (qm_list = NULL,
     )
   }
 
-
-  ## Step 1: Run the full tabulation
-  if(!is.null(old_folder) & !is.null(new_folder)){
-  qm_list <- RIDOM_comptable_re_evaluate(old_folder, new_folder) %>%
-    tabulate_pipeline_QM()
-
-  }
+  ## Step 1: Store the full tabulation
   temp_rdata <- tempfile(fileext = ".RData")
   save(qm_list, file = temp_rdata)
 

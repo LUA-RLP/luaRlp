@@ -36,7 +36,7 @@ Es beschreibt das Vorgehen zur Erstellung Evaluierungsauswertung wie für die je
 
 **Außerhalb von R** exportieren wir in **RIDOM Seqsphere** "*Comparison Tables*" für die Projekte "*Produktiv_Salmonellea_enterica*", "*Produktiv_EHEC*", "*Produktiv_Listeria_moncytogenes*", "*Produktiv_MRSA*" und "*Produktiv_Legionella_pneumophila*".
 
-1.  Wir speichern diese Tabellen als **.csv-Dateien** in einem Ordner (z.b. das aktuelle Datum), den wir im nächsten Schritt benutzen. Sinnvoll ist eine Benennung mit dem aktuellen Datum.
+1.  Wir speichern diese Tabellen als **.csv-Dateien** in einem Ordner, den wir im nächsten Schritt benutzen. Sinnvoll ist eine Benennung des Ordners mit dem aktuellen Datum.
 2.  Wir löschen nun die Evaluierungs-Proben in RIDOM Seqsphere um eine Re-Prozessierung zu ermöglichen.
 3.  Wir aktivieren nun die neue Pipeline in RIDOM Seqsphere.
 4.  Nachdem die Prozessierung abgeschlossen ist exportieren die "*Comparison Tables*" für die o.g. Projekte erneut und speichern sie in einem anderen Ordner (z.b. erneut das aktuelle Datum). Bei Re-Validierung kann der erste Export (1.) ausbleiben und es kann direkt mit Punkt 2 begonnen werden.
@@ -48,7 +48,7 @@ library(luaRlp)
 library(dplyr)
 ```
 
-Und nutzen die foldende Funktion:
+Und nutzen die folgende Funktion:
 
 ```{r}
 Re_Eval <- RIDOM_comptable_re_evaluate(
@@ -58,11 +58,11 @@ Re_Eval <- RIDOM_comptable_re_evaluate(
     "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_20/")
 ```
 
-Statt des Standardwerts (das Verzeichnis in dem R momentan läuft) sollte eine Nennung des Output-Ordners erfolgen um ein Speichern an einem sinnvollen Ort durchzuführen (Nutzen sie "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/Vergleiche/"). Darüber hinaus sollte wie im Standartwert der Funktion hinterlegt, festgehalten werden, welche Comparison Tables (welche Ordner, benannt mit entsprechendem Datum) verglichen wurden. Im hier gezeigten Beispiel würde `2025_03_19_VS_2025_03_20_timestamp` als Ordnername auch erstellt wenn vor Ausführen des o.g. Befehls ```setwd("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/Vergleiche")``` ausgeführt wird.
+Statt des Standardwerts (das Verzeichnis in dem R momentan läuft) sollte eine Nennung des Output-Ordners erfolgen um ein Speichern an einem sinnvollen Ort durchzuführen (Nutzen sie "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/Vergleiche/"). Darüber hinaus sollte, wie im Standardwert der Funktion hinterlegt, festgehalten werden, welche Comparison Tables (welche Ordner, benannt mit entsprechendem Datum) verglichen wurden. Im hier gezeigten Beispiel würde `2025_03_19_VS_2025_03_20_timestamp` als Ordnername auch erstellt, wenn vor Ausführen des o.g. Befehls `setwd("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/Vergleiche")` ausgeführt wird um das R-Arbeitsverzeichnis in den Vergleich-Ordner zu verlegen.
 
-Die Funktion überschreibt aus Sicherheitsgründen keine Dateien. Wenn der Output-Ordner bereits existiert und mit den ensprechenden Dateien gefüllt ist, wird stattdessen ein Fehler ausgegeben. Soll die Evaluierung wirklich unter dem selben Namen wiederholt werden, muss der Ordner zuvor vom Nutzer gelöscht werden.
+Die Funktion überschreibt aus Sicherheitsgründen keine Dateien. Wenn der Output-Ordner bereits existiert und mit den entsprechenden Dateien gefüllt ist, wird stattdessen ein Fehler ausgegeben. Soll die Evaluierung wirklich unter dem selben Namen wiederholt werden, muss der Ordner zuvor vom Nutzer gelöscht werden.
 
-Die Dateien wurden nun in den angegebenen Output Ordner geschrieben. Zusätzlich gibt die Funktion eine Liste von tibbles ("tidyverse-Tabellen") zurück. Diese kann nun auch direkt in R analysiert werden:
+Die Dateien wurden von der oben gezeigten Funktion in den angegebenen Output-Ordner geschrieben. Zusätzlich gibt die Funktion eine Liste von tibbles ("tidyverse-Tabellen") zurück. Diese kann nun auch direkt in R analysiert werden:
 
 ```{r echo=TRUE}
 library(magrittr)
@@ -76,24 +76,13 @@ Re_Eval[["EHEC"]] %>%
 
 ```
 
-Zur Dokumentation im Papier-basierten QM-System muss darüber hinaus ein Ausdruck
-zur handschriftlichen Unterschrift produziert werden. 
-
+Dieses Vorgehen ist hilfreich um bei veränderten Ergebnissen im Vergleich der Pipelines Unterschiede zu analysieren. Zur Dokumentation im Papier-basierten QM-System muss darüber hinaus aber ein Ausdruck zur handschriftlichen Unterschrift produziert werden. Dies geschieht mit folgender Funktionskette:
 
 ```{r echo=TRUE}
-# create_QMpdf_for_signatures(
-#   old_folder = 
-#     "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_19/",
-#   new_folder = 
-#     "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_20/",
-#   output_pdf = "test1.pdf"
-#   )
 Re_Eval %>% 
   tabulate_pipeline_QM() %>%
-  create_QMpdf_for_signatures(output_pdf="C:/Users/HeitlingerE/Documents/luaRlp/test.pdf")
+  create_QMpdf_for_signatures()
 
 ```
 
-
-
-
+Dieses PDF muss nun gedruckt und unterschrieben werden.
