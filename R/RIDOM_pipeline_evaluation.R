@@ -37,7 +37,9 @@
 #'
 RIDOM_comptable_re_evaluate <-
   function (old_folder, new_folder,
-            out_folder = paste0(basename(old_folder),
+            out_folder = paste0(dirname(old_folder),
+                                "/Vergleiche/",
+                                basename(old_folder),
                                 "_VS_",
                                 basename(new_folder),
                                 "_",
@@ -291,10 +293,13 @@ tabulate_pipeline_QM <- function(x) {
 #'
 create_QMpdf_for_signatures <- function (qm_list,
                                          output_pdf =
-                                           paste0("QM_pipeline_",
-                                                  format(Sys.time(),
-                                                         "%Y-%m-%d_%H-%M-%S"),
-                                                  ".pdf"),
+                                           paste0(
+                                             attr(qm_list, "out_folder"),
+                                             "/",
+                                             "QM_pipeline_",
+                                             format(Sys.time(),
+                                                    "%Y-%m-%d_%H-%M-%S"),
+                                             ".pdf"),
                                          temp_rmd = tempfile(fileext = ".Rmd")){
 
   ### Dumping some data on how the QM documents are called... TODO if it gets
@@ -398,17 +403,15 @@ create_QMpdf_for_signatures <- function (qm_list,
     "  )",
     "  cat(
         '\\n\\n',
-        'abgelegt in',
+        'abgelegt in Verzeichnis',
         '\\n\\n',
-    attributes(qm_list)$out_folder,
+    dirname(attributes(qm_list)$out_folder),
     '\\n\\n',
-        'Arbeitsverzeichnis:',
-        '\\n\\n',
-    getwd(),
+    basename(attributes(qm_list)$out_folder),
     '\\n\\n',
     'Aktuelle Datei:',
     '\\n\\n',
-    output_pdf,
+    basename(output_pdf),
     '\\n\\n',
     '\\\\vspace{1cm}',
     '\\\\noindent',
