@@ -6,8 +6,8 @@
 \usage{
 create_QMpdf_for_signatures(
   qm_list,
-  output_pdf = paste0("QM_pipeline_", format(Sys.time(), "\%Y-\%m-\%d_\%H-\%M-\%S"),
-    ".pdf"),
+  output_pdf = paste0(attr(qm_list, "out_folder"), "/", "QM_pipeline_",
+    format(Sys.time(), "\%Y-\%m-\%d_\%H-\%M-\%S"), ".pdf"),
   temp_rmd = tempfile(fileext = ".Rmd")
 )
 }

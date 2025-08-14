@@ -7,8 +7,8 @@
 RIDOM_comptable_re_evaluate(
   old_folder,
   new_folder,
-  out_folder = paste0(basename(old_folder), "_VS_", basename(new_folder), "_",
-    format(Sys.time(), "\%Y-\%m-\%d_\%H-\%M-\%S"), "/"),
+  out_folder = paste0(dirname(old_folder), "/Vergleiche/", basename(old_folder), "_VS_",
+    basename(new_folder), "_", format(Sys.time(), "\%Y-\%m-\%d_\%H-\%M-\%S"), "/"),
   wanted_cols = c("Sample ID", "Perc. Good Targets", "Avg. Coverage (Assembled)", "ST",
     "ST Warwick", "Complex Type", "N50 (Assembled)", "O Type", "H Type", "Serovar")
 )

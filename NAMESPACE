@@ -2,10 +2,12 @@
 
 export(RIDOM_comptable_re_evaluate)
 export(aggregate_woche)
+export(build_query)
 export(create_Epidata)
 export(create_QMpdf_for_signatures)
 export(einlesen_sure)
 export(import_SurvNet)
+export(import_SurvNet_general)
 export(launch_count_lines)
 export(launch_qPCR_evaluator)
 export(launch_ridom_2_lims)
