@@ -17,7 +17,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Die Funktion `create_Epidata()` ist das zentrale Werkzeug zur Generierung eines CSV-Exports aus aktuellen SurvNet-Daten, der direkt in die RIDOM-Datenbank übernommen werden kann. Dabei werden die Daten automatisiert aufbereitet, mit Geoinformationen und Gesundheitsamtskürzeln ergänzt und mit Labordaten aus unserem LIMS verknüpft.
 
-```{r loadlib, include=FALSE} 
+```{r loadlib, include=FALSE}
 library(luaRlp)
 ```
 
@@ -44,9 +44,7 @@ Eine `Problems.csv` Datei mit solchen "gelösten Problemen", also angepassten Su
 
 ## Trouble shooting (Proben ohne Epidaten)
 
-Gibt es Probleme die nicht anhand der entstehenden Dateien offensichtlich sind,
-können wir in R weiter nachforschen. Wir können dazu z.B. die in SurvNet 
-verfügbaren Rohdaten im Ursprungsformat betrachten: 
+Gibt es Probleme die nicht anhand der entstehenden Dateien offensichtlich sind, können wir in R weiter nachforschen. Wir können dazu z.B. die in SurvNet verfügbaren Rohdaten im Ursprungsformat betrachten:
 
 ```{r}
 ## SurvNet Rohdaten 
@@ -55,9 +53,8 @@ Snet <- import_SurvNet()
 any(Snet$Aktenzeichen%in%"SAL2024-2072")
 
 ```
-Dieser Code überprüft z.B. ob ein Aktenzeichen in seiner Roh-Form im Datensatz 
-vorhanden ist. 
 
+Dieser Code überprüft z.B. ob ein Aktenzeichen in seiner Roh-Form im Datensatz vorhanden ist.
 
 ## Hinweis zur ODBC-Verbindung
 
