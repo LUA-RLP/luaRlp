@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Erzeugen eines RIDOM-kompatiblen Datensatzes mit epidemiologischen Daten
 
-Die Funktion `create_Epidata()` ist das zentrale Werkzeug zur Generierung eines CSV-Exports aus aktuellen SurvNet-Daten, der direkt in die RIDOM-Datenbank übernommen werden kann. Dabei werden die Daten automatisiert aufbereitet, mit Geoinformationen und Gesundheitsamtskürzeln ergänzt und mit Labordaten aus unserem LIMS verknüpft.
+Die Funktion `create_Epidata()` ist das zentrale Werkzeug zur Generierung eines Excel-Exports aus aktuellen SurvNet-Daten, der direkt in die RIDOM-Datenbank übernommen werden kann. Dabei werden die Daten automatisiert aufbereitet, mit Geoinformationen und Gesundheitsamtskürzeln ergänzt und mit Labordaten aus unserem LIMS verknüpft.
 
 ```{r loadlib, include=FALSE}
 library(luaRlp)

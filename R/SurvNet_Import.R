@@ -5,7 +5,7 @@
 #' LUA Probennummern (3263-) and SurvNet IDs (Aktenzeichen with licence plate
 #' prefix)
 #'
-#' @param out The output file in csv format (defaults to  SurvNetExport4RIDOM
+#' @param out The output file in xlsx format (defaults to  SurvNetExport4RIDOM
 #' plus the current timestamp wirtten into
 #' "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/")
 #'
@@ -17,12 +17,12 @@
 #' available option (also the current default) is to write non-matching LIMS
 #' entries to a file (given in the argument "problems").
 #'
-#' @return Writes a csv file compatible with the RIDOM database scheme "LUA RLP
+#' @return Writes a xlsx file compatible with the RIDOM database scheme "LUA RLP
 #' default bacteria to "\strong{out}" and a optionally a second csv file to
 #' "\strong{problem}". See "Format".
 #'
 #'
-#' @format  The csv file written to "out" has the following columns:
+#' @format  The xlsx file written to "out" has the following columns:
 #' \describe{
 #'   \item{Sample ID}{Character. As "Labornummer" from LIMS}
 #'   \item{Alias ID (s)}{Character. This is the \strong{merge key}! As
@@ -52,13 +52,13 @@
 #'   \item{Project}{Character. The RIDOM project name recoded from
 #'   Meldekategorie (Erreger) from SurvNet}
 #'   \item{Host}{Character. Hardcoded "homo sapiens" for all but Legionella,
-#'   which needs to be entered manually (set to "NACHTRAGEN!")}
+#'   which needs to be entered manually (set to "" - empty)}
 #'   \item{Source type}{Character. Hardcoded "clinical/host-associated" for all
-#'   but Legionella, which needs to be entered manually (set to "NACHTRAGEN!")}
+#'   but Legionella, which needs to be entered manually (set to "" - empty)}
 #'   \item{Source subtype}{Character. Hardcoded "human" for all but Legionella,
-#'   which needs to be entered manually (set to "NACHTRAGEN!")}
+#'   which needs to be entered manually (set to "" - empty)}
 #'   \item{Specimen type}{Character. Hardcoded "stool" for salmonella and EHEC,
-#'   "NACHTRAGEN!" for Legionella, MRSA and Listeria}
+#'   ""- empty for Legionella, MRSA and Listeria}
 #'   }
 #'
 #' @export
@@ -66,12 +66,13 @@
 #' @importFrom readr write_csv
 #' @importFrom magrittr %>%
 #' @importFrom utils read.delim
+#' @importFrom writexl write_xlsx
 #'
 create_Epidata <- function(LIMS_link_file,
          out =
            paste0("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Import/",
                   "SurvNetExport4RIDOM",
-                  format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), ".csv"),
+                  format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), ".xlsx"),
          problems = NULL,
          type_of_problem = "non-matching-LIMS"
          ){
@@ -88,14 +89,13 @@ create_Epidata <- function(LIMS_link_file,
     rename(`Sample ID` = .data$Labornummer,
            `Alias ID (s)` =.data$SurvNet.AZ,
            `Zip of Isolation` = .data$PLZ)
-  writeLines(c("\ufeff"), out)
-  readr::write_csv(Out_EpiDaten, out)
+  write_xlsx(Out_EpiDaten, out)
   ### optinal reporting of a problems-file
   if(!is.null(problems)){
     if(type_of_problem %in%(c("non-matching-LIMS"))){
       p <- IDs %>%
         filter(!SurvNet.AZ %in% SN$Aktenzeichen)
-      readr::write_excel_csv2(p, problems)
+      write_csv(p, problems)
     }else{
       stop("Choose a type of problem to report when requesting problems output")
     }
@@ -237,15 +237,15 @@ import_SurvNet <- function(){
     ) %>%
     mutate(## everywhere but Legionella human host as default
       `Host` = ifelse(Datensatzkategorie != "Legionellose", "Homo sapiens",
-                      "NACHTRAGEN!"),
+                      ""),
       `Source type` = ifelse(Datensatzkategorie != "Legionellose",
                            "clinical/host-associated",
-                           "NACHTRAGEN!"),
+                           ""),
       `Source subtype` = ifelse(Datensatzkategorie != "Legionellose", "human",
-                                "NACHTRAGEN!"),
+                                ""),
       `Specimen type` = ifelse(Datensatzkategorie %in% c("Salmonellose", "EHEC"),
                                "stool",
-                               "NACHTRAGEN!")
+                               "")
         ) %>%
     rename(`Collection Date` = .data$Meldedatum,
            `Host Age (years)` = .data$AgeComputed
