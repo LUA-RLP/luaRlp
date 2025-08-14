@@ -85,3 +85,24 @@
 #' data(Praxisliste)
 "Praxisliste"
 
+
+#' geo_standards
+#'
+#' Enthält eine Tabelle zur standardisierten Benennung und Verarbeitung von
+#' Gebietsdaten mit Bezug zum öffentlichen Gesundheitsdienst in Rheinland-Pfalz
+#'
+#' @docType data
+#' @usage data(geo_standards)
+#'
+#' @format Eine Tabelle mit 4 Spalten, in denen Informationen zu :
+#' \describe{
+#'   \item{LD_ID}{Landkreis Identifyer, kompatibel mit SurvNet}
+#'   \item{Meldelandkreis}{LUA RLP interne Standard-Schreibweise der Landkreise}
+#'   \item{Gesundheitsamt}{Für den Landkreis zuständiges Gesundheitsamt}
+#'   \item{Kürzel}{LUA RLP interes Standard-Kürzel für das Gesundheitsamt}
+#'   }
+#' @source Compiled by Anja Schoeps
+#' @examples
+#' data(geo_standards)
+"geo_standards"
+
