@@ -32,25 +32,18 @@ Dieses Dokument beschreibt das Vorgehen bei der (Re-)Evaluierung der bioinformat
 
 -   PRM 0 32.6 0007 01_Genotypisierung Legionella pneumophila
 
-Es beschreibt das Vorgehen zur Erstellung Evaluierungsauswertung wie für die jeweiligen Anhänge "Beispielhafte Doku Prozessvalidierung.pdf" gefordert.
+Das folgende Dokument beschreibt das Vorgehen zur Erstellung der Evaluierungsauswertung wie für die jeweiligen Anhänge "Beispielhafte Doku Prozessvalidierung.pdf" gefordert.
 
-**Außerhalb von R** exportieren wir in **RIDOM Seqsphere** "*Comparison Tables*" für die Projekte "*Produktiv_Salmonellea_enterica*", "*Produktiv_EHEC*", "*Produktiv_Listeria_moncytogenes*", "*Produktiv_MRSA*" und "*Produktiv_Legionella_pneumophila*".
-
-1.  Wir speichern diese Tabellen als **.csv-Dateien** in einem Ordner, den wir im nächsten Schritt benutzen. Sinnvoll ist eine Benennung des Ordners mit dem aktuellen Datum.
-2.  Wir löschen nun die Evaluierungs-Proben in RIDOM Seqsphere um eine Re-Prozessierung zu ermöglichen.
-3.  Wir aktivieren nun die neue Pipeline in RIDOM Seqsphere.
-4.  Nachdem die Prozessierung abgeschlossen ist exportieren die "*Comparison Tables*" für die o.g. Projekte erneut und speichern sie in einem anderen Ordner (z.b. erneut das aktuelle Datum). Bei Re-Validierung kann der erste Export (1.) ausbleiben und es kann direkt mit Punkt 2 begonnen werden.
-
-Nun können wir die Arbeit in R beginnen, dazu laden wir das Paket `luaRlp`:
+Rohdaten (fastq-Dateien) liegen schreibgeschützt auf dem Linux-Server des Instituts (SRVLDAP0008) und bilden die Grundlage für die Validierung. Wir laden hierfür in R zunächst das Paket `luaRlp`, außerdem benötigen wir zur hier beschriebenen Datenanalyse das Paket `dplyr`:
 
 ```{r loadlib}
 library(luaRlp)
 library(dplyr)
 ```
 
-Und nutzen die folgende Funktion:
+Wir werden im weiteren Verlauf die folgende Funktion nutzen:
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 Re_Eval <- RIDOM_comptable_re_evaluate(
   old_folder = 
     "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_19/",
@@ -58,20 +51,26 @@ Re_Eval <- RIDOM_comptable_re_evaluate(
     "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_20/")
 ```
 
-Statt des Standardwerts (das Verzeichnis in dem R momentan läuft) sollte eine Nennung des Output-Ordners erfolgen um ein Speichern an einem sinnvollen Ort durchzuführen (Nutzen sie "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/Vergleiche/"). Darüber hinaus sollte, wie im Standardwert der Funktion hinterlegt, festgehalten werden, welche Comparison Tables (welche Ordner, benannt mit entsprechendem Datum) verglichen wurden. Im hier gezeigten Beispiel würde `2025_03_19_VS_2025_03_20_timestamp` als Ordnername auch erstellt, wenn vor Ausführen des o.g. Befehls `setwd("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/Vergleiche")` ausgeführt wird um das R-Arbeitsverzeichnis in den Vergleich-Ordner zu verlegen.
+1.   `old_folder` bezeichnet einen Ordner in dem Tabellen als **.csv-Dateien** aus der vorherigen Evaluierung abgelegt sind. Der Ordner wurde mit dem Datum im Format (JJJJ_MM_DD) benannt. Wir notieren den Pfad dieses Ordners. Die Funktion des Pakets wird sicherstellen, dass er die geforderten Dateien ("Comparison tables") enthält.
 
-Die Funktion überschreibt aus Sicherheitsgründen keine Dateien. Wenn der Output-Ordner bereits existiert und mit den entsprechenden Dateien gefüllt ist, wird stattdessen ein Fehler ausgegeben. Soll die Evaluierung wirklich unter dem selben Namen wiederholt werden, muss der Ordner zuvor vom Nutzer gelöscht werden.
+2.  Wir stellen sicher, dass die Evaluierungs-Proben nicht bereits in prozessiert in RIDOM Seqsphere vorleigen (sie 4. unten) und kopieren nun die Rohdaten für die Evaluierung auf dem Linux Server in einen Ordner, der von der zu evaluierenden Pipeline in RIDOM Seqsphere überwacht wird. Dadurch werden die Proben prozessiert.
 
-Die Dateien wurden von der oben gezeigten Funktion in den angegebenen Output-Ordner geschrieben. Zusätzlich gibt die Funktion eine Liste von tibbles ("tidyverse-Tabellen") zurück. Diese kann nun auch direkt in R analysiert werden:
+3.  Nachdem die Prozessierung abgeschlossen ist exportieren wir in RIDOM Seqsphere "*Comparison Tables*" für die Projekte "*Produktiv_Salmonellea_enterica*", "*Produktiv_EHEC*", "*Produktiv_Listeria_moncytogenes*", "*Produktiv_MRSA*" und "*Produktiv_Legionella_pneumophila*". Wir speichern diese in einem anderen Ordner (nun mit dem aktuelle Datum im Format JJJJ_MM_DD -\> `new_folder`). Bei der nächsten Re-Evaluierung werden diese "Comparison tables" als Referenz benutzt, im aktuellen Prozess werden sie als `new_folder` angegeben.
+
+4.  Wir löschen nun die Evaluierungs-Proben aus RIDOM Seqsphere um eine Re-Prozessierung bei der nächsten Re-Prozessierung in der Zukunft zu ermöglichen.
+
+Als Standardwert für den Output-Ordner (`out_folder`) nutzt die Funktion `"O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/Vergleiche/"`. Darüber hinaus ist im Standardwert der Funktion hinterlegt, dass hierin ein Unterordner aus dem Zusammenziehen der Namen der beiden verglichenen Ordner generiert wird, dieser Order erhält außerdem einen Zeitstempel der aktuellen Re-Evaluierung. Im hier gezeigten Beispiel wird `2025_03_19_VS_2025_03_20_timestamp` als Ordnername erstellt. Dieser Standardwert ist in der QM-konformen Re-Evaluierung nicht zu ändern.
+
+Die Funktion überschreibt aus Sicherheitsgründen keine Dateien, sonder gibt einen Fehler aus, sollte der Nutzer dies verlangen (durch den minutengenauen Zeitstempel ist dies für den Standartwert praktisch ausgeschlossen).
+
+Dateien wurden von der oben gezeigten Funktion in den angegebenen Output-Ordner geschrieben. Zusätzlich gibt die Funktion eine Liste von tibbles ("tidyverse-Tabellen") zurück. Diese kann nun auch direkt in R analysiert werden:
 
 ```{r echo=TRUE}
-library(magrittr)
-library(dplyr)
 
 Re_Eval["EHEC"]
 
-Re_Eval[["EHEC"]] %>%
-  select(where(is.numeric)) %>% 
+Re_Eval[["EHEC"]] |>
+  dplyr::select(where(is.numeric)) |> 
   colSums(na.rm = TRUE) 
 
 ```
@@ -79,8 +78,8 @@ Re_Eval[["EHEC"]] %>%
 Dieses Vorgehen ist hilfreich um bei veränderten Ergebnissen im Vergleich der Pipelines Unterschiede zu analysieren. Zur Dokumentation im Papier-basierten QM-System muss darüber hinaus aber ein Ausdruck zur handschriftlichen Unterschrift produziert werden. Dies geschieht mit folgender Funktionskette:
 
 ```{r echo=TRUE}
-Re_Eval %>% 
-  tabulate_pipeline_QM() %>%
+Re_Eval |> 
+  tabulate_pipeline_QM() |>
   create_QMpdf_for_signatures()
 
 ```
