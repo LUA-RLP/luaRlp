@@ -4,7 +4,7 @@
 \alias{create_Epidata}
 \title{createEpidata}
 \format{
-The csv file written to "out" has the following columns:
+The xlsx file written to "out" has the following columns:
 \describe{
   \item{Sample ID}{Character. As "Labornummer" from LIMS}
   \item{Alias ID (s)}{Character. This is the \strong{merge key}! As
@@ -34,13 +34,13 @@ The csv file written to "out" has the following columns:
   \item{Project}{Character. The RIDOM project name recoded from
   Meldekategorie (Erreger) from SurvNet}
   \item{Host}{Character. Hardcoded "homo sapiens" for all but Legionella,
-  which needs to be entered manually (set to "NACHTRAGEN!")}
+  which needs to be entered manually (set to "" - empty)}
   \item{Source type}{Character. Hardcoded "clinical/host-associated" for all
-  but Legionella, which needs to be entered manually (set to "NACHTRAGEN!")}
+  but Legionella, which needs to be entered manually (set to "" - empty)}
   \item{Source subtype}{Character. Hardcoded "human" for all but Legionella,
-  which needs to be entered manually (set to "NACHTRAGEN!")}
+  which needs to be entered manually (set to "" - empty)}
   \item{Specimen type}{Character. Hardcoded "stool" for salmonella and EHEC,
-  "NACHTRAGEN!" for Legionella, MRSA and Listeria}
+  ""- empty for Legionella, MRSA and Listeria}
   }
 }
 \usage{
@@ -48,7 +48,7 @@ create_Epidata(
   LIMS_link_file,
   out =
     paste0("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Import/",
-    "SurvNetExport4RIDOM", format(Sys.time(), "\%Y-\%m-\%d_\%H-\%M-\%S"), ".csv"),
+    "SurvNetExport4RIDOM", format(Sys.time(), "\%Y-\%m-\%d_\%H-\%M-\%S"), ".xlsx"),
   problems = NULL,
   type_of_problem = "non-matching-LIMS"
 )
@@ -58,7 +58,7 @@ create_Epidata(
 LUA Probennummern (3263-) and SurvNet IDs (Aktenzeichen with licence plate
 prefix)}
 
-\item{out}{The output file in csv format (defaults to  SurvNetExport4RIDOM
+\item{out}{The output file in xlsx format (defaults to  SurvNetExport4RIDOM
 plus the current timestamp wirtten into
 "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/")}
 
@@ -71,7 +71,7 @@ available option (also the current default) is to write non-matching LIMS
 entries to a file (given in the argument "problems").}
 }
 \value{
-Writes a csv file compatible with the RIDOM database scheme "LUA RLP
+Writes a xlsx file compatible with the RIDOM database scheme "LUA RLP
 default bacteria to "\strong{out}" and a optionally a second csv file to
 "\strong{problem}". See "Format".
 }
