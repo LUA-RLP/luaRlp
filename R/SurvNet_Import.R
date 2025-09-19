@@ -129,7 +129,7 @@ import_SurvNet <- function(){
   # Try running the query and ensure the connection is closed
   data <- tryCatch({
     dbGetQuery(myconn,
-               "SELECT DISTINCT [Data].[Version].[Token] AS 'Aktenzeichen' , [Data].[Version].[IdType] AS 'Datensatzkategorie', [Data].[Disease71].[ReportingCounty] AS 'LK_ID' ,[Data].[Disease71].[IdVersion], [Data].[Version].[IdType], [Data].[Version].[CodeRecordOwner] AS 'Eigentuemer', [Data].[Version].[IdRecord] AS 'IdRecord', [Data].[Disease71].[Sex] 'Geschlecht' , [Data].[Disease71].[ReportingDate] AS 'Meldedatum' , [Data].[Disease71].[MunicipalityKey] , [Data].[Disease71].[AgeComputed] , [Data].[Disease71].[StatusHospitalization] AS 'HospitalisierungStatus' , [Data].[Disease71].[StatusDeceased] AS 'VerstorbenStatus' ,ExPOI2.ExpKont1, ExPOI2.ExpSubKont1, ExPOI2.ExpLand1, ExPOI2.ExpBL1, ExPOI2.ExpLK1, ExPOI2.ExpKont2, ExOutInfo.AusbruchInfo_InterneRef FROM [Data].[Version] INNER JOIN [Data].[Disease71] ON [Data].[Version].[IdVersion] = [Data].[Disease71].[IdVersion] LEFT OUTER JOIN [Meta].[DayTable] DT1001 ON DT1001.IdDaySQL = CAST(CAST([Data].[Disease71].[ReportingDate] AS FLOAT) AS INT) LEFT OUTER JOIN [Meta].[DayTable] DT1110 ON DT1110.IdDaySQL = CAST(CAST([Data].[Disease71].[OnsetOfDisease] AS FLOAT) AS INT) Outer Apply Data.ExpandWithPlaceOfInfections2(Data.Version.IdVersion) ExPOI2 Outer Apply Data.ExpandWithOutbreakInfo ([Data].[Version].[IdVersion]) ExOutInfo WHERE (GETDATE() BETWEEN [Data].[Version].[ValidFrom] AND [Data].[Version].[ValidUntil]) AND ([Data].[Version].[IsActive] = 1) AND ([Data].[Version].[IdRecordType] = 1) AND (([Data].[Version].[IdType] IN (121,157,179,140,138))) AND (((DT1001.WeekYear>=2023)))")
+               "SELECT DISTINCT [Data].[Version].[Token] AS 'Aktenzeichen' , [Data].[Version].[IdType] AS 'Datensatzkategorie', [Data].[Disease71].[ReportingCounty] AS 'LK_ID' ,[Data].[Disease71].[IdVersion], [Data].[Version].[IdType], [Data].[Version].[CodeRecordOwner] AS 'Eigentuemer', [Data].[Version].[IdRecord] AS 'IdRecord', [Data].[Disease71].[Sex] 'Geschlecht' , [Data].[Disease71].[ReportingDate] AS 'Meldedatum' , [Data].[Disease71].[MunicipalityKey] , [Data].[Disease71].[AgeComputed] , [Data].[Disease71].[StatusHospitalization] AS 'HospitalisierungStatus' , [Data].[Disease71].[StatusDeceased] AS 'VerstorbenStatus' ,ExPOI2.ExpKont1, ExPOI2.ExpSubKont1, ExPOI2.ExpLand1, ExPOI2.ExpBL1, ExPOI2.ExpLK1, ExPOI2.ExpKont2, ExOutInfo.AusbruchInfo_InterneRef FROM [Data].[Version] INNER JOIN [Data].[Disease71] ON [Data].[Version].[IdVersion] = [Data].[Disease71].[IdVersion] LEFT OUTER JOIN [Meta].[DayTable] DT1001 ON DT1001.IdDaySQL = CAST(CAST([Data].[Disease71].[ReportingDate] AS FLOAT) AS INT) LEFT OUTER JOIN [Meta].[DayTable] DT1110 ON DT1110.IdDaySQL = CAST(CAST([Data].[Disease71].[OnsetOfDisease] AS FLOAT) AS INT) Outer Apply Data.ExpandWithPlaceOfInfections2(Data.Version.IdVersion) ExPOI2 Outer Apply Data.ExpandWithOutbreakInfo ([Data].[Version].[IdVersion]) ExOutInfo WHERE (GETDATE() BETWEEN [Data].[Version].[ValidFrom] AND [Data].[Version].[ValidUntil]) AND ([Data].[Version].[IsActive] = 1) AND ([Data].[Version].[IdRecordType] = 1) AND (([Data].[Version].[IdType] IN (121,157,179,140,138,135))) AND (((DT1001.WeekYear>=2023)))")
   },
   error = function(e) {
     message("Error: Failed to execute the SQL query. Check your syntax and connection.")
@@ -223,9 +223,10 @@ import_SurvNet <- function(){
                           "1" = "male", "2" = "female", "3" = "non-binary",
                           "-1" = "unknown", "0" = "unknown"),
       `Datensatzkategorie` = recode(.data$Datensatzkategorie,
-                                    "121" = "EHEC", "138" = "Legionellose",
-                                    "140" = "Listeriose", "157" =
-                                      "Salmonellose",
+                                    "121" = "EHEC","135" = "EHEC",
+                                    "138" = "Legionellose",
+                                    "140" = "Listeriose",
+                                    "157" = "Salmonellose",
                                     "179" = "MRSA"),
       `Project` = recode(.data$Datensatzkategorie,
                          "EHEC" = "Produktiv_EHEC",
