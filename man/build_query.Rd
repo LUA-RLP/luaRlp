@@ -2,20 +2,26 @@
 % Please edit documentation in R/SurvNet_Import_general.R
 \name{build_query}
 \alias{build_query}
-\title{Build query}
+\title{Funktion zum Aufbau eines Abfragetexts (SQL-Language) für die SurvNet-Abfrage}
 \usage{
-build_query(TagKon = FALSE)
+build_query(Thema = NULL, Periode = NULL)
 }
 \arguments{
-\item{TagKon}{}
+\item{Thema}{Auswahl zwischen alle, Tageskontrolle, VHF, WBK, Arboviren, ZoonotischeINV, SerovarSAL, Influenza, COVID19, RSV}
+
+\item{Periode}{}
 }
 \value{
-a query for survNet
+Ausgabe wird in der Funktion import_SurvNet_general verwendet.
 }
 \description{
-Build query
+Es können spezielle vorgefertigte Abfragen erstellt werden.//
+             Zusätzlich kann die Periode der Abfrage unabhängig davon festgelegt werden.
+}
+\details{
+SurvNet_Abfrage
 }
 \examples{
-query <- build_query(TagKon=TRUE)
+query <- build_query(Thema="Tageskontrolle")
 
 }

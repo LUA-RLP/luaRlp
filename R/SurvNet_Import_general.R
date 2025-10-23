@@ -1,17 +1,22 @@
 
 
-#' Build query
+#' SurvNet_Abfrage
 #'
-#' @param TagKon
+#' @title Funktion zum Aufbau eines Abfragetexts (SQL-Language) für die SurvNet-Abfrage
+#' @description Es können spezielle vorgefertigte Abfragen erstellt werden.//
+#'              Zusätzlich kann die Periode der Abfrage unabhängig davon festgelegt werden.
+#' @param Thema Auswahl zwischen alle, Tageskontrolle, VHF, WBK, Arboviren, ZoonotischeINV, SerovarSAL, Influenza, COVID19, RSV
+#' @param Periode
 #'
-#' @return a query for survNet
+#' @return Ausgabe wird in der Funktion import_SurvNet_general verwendet.
 #'
 #' @export
 #'
 #' @examples
-#' query <- build_query(TagKon=TRUE)
+#' query <- build_query(Thema="Tageskontrolle")
 #'
-build_query <- function(TagKon=FALSE) {
+build_query <- function(Thema=NULL, Periode=c("alle","last2weeks","thisyear","last2years","last5years","last10years")) {
+
   select_part <- "
     SELECT DISTINCT
       [Data].[Disease71].[IdVersion],
@@ -30,7 +35,8 @@ build_query <- function(TagKon=FALSE) {
       (CASE [Data].[Disease71].[StatusDeceased] WHEN 10 THEN 'Nein' WHEN 20 THEN 'Ja' ELSE 'u' END) AS 'VerstorbenStatus',
       [Data].[Disease71].[OnsetOfDisease] AS 'Erkrankungsbeginn',
       DT1001.Week,
-      DT1001.Year"
+      DT1001.Year,
+      DT1001.WeekYear"
 
   from_part <- "
     FROM [Data].[Version]
@@ -41,43 +47,65 @@ build_query <- function(TagKon=FALSE) {
     WHERE (GETDATE() BETWEEN [Data].[Version].[ValidFrom] AND [Data].[Version].[ValidUntil]) AND
     [Data].[Version].[IsActive] = 1 AND
     [Data].[Version].[IdRecordType] = 1 AND
-    [Data].[Disease71].[ReportingState] = 13000007"
+    [Data].[Disease71].[ReportingState] = 13000007 AND Year=2025"
 
-  if (TagKon) {
-    S_TagKon <- ",
-      [Data].[Disease71].[DeceasedDate],
-      [Data].[Disease71].[CaseDefCategoryComputed] AS 'Falldefkategorie',
-      [Data].[Disease71].[P112Relevant] AS 'P112Relevant_',
-      [Data].[Disease71].[StatusPlaceOfInf] AS 'StatusPlaceOfInf_' ,
-      (SELECT COUNT(*) FROM [Data].[PlaceOfInfection] WITH (FORCESEEK, INDEX(IX_IdVersion))
-            WHERE [Data].[PlaceOfInfection].IdVersion = [Data].[Version].[IdVersion]) AS 'PlaceOfInfections_COUNT',
-      [Data].[PlaceOfInfection].[Region] AS 'ID',
-      [Data].[Disease71].[StatusPatientSetting] AS 'StatusPatientSetting_',
-      ExTransTime.AtGACreated,
-      ExTransTime.AtLSCreated,
-      [Data].[Version].[ValidFrom] AS 'GültigAb_DMYhs'"
+  # Thema-spezifische Erweiterungen -----------------------------------------
+  if (!is.null(Thema)) {
+    message("Thema ist: ", Thema)
 
-    select_part <- paste0(select_part,S_TagKon)
+    filtered <- themes_list %>%
+      filter(Thema == !!Thema)
 
-    F_TagKon <- "
-      LEFT OUTER JOIN [Data].[PlaceOfInfection] ON [Data].[Version].[IdVersion] = [Data].[PlaceOfInfection].[IdVersion]
-      Outer Apply Data.ExpandWithTrackTimes([Data].[Version].[GuidRecord]) ExTransTime"
+    if (nrow(filtered) == 0) {
+      stop(paste0("❌ Das angegebene Thema '", Thema, "' wurde in themes_list nicht gefunden.\n",
+                  "Verfügbare Themen sind: ",
+                  paste(unique(themes_list$Thema), collapse = ", "), "."))
+    }
 
-    from_part <- paste0(from_part,F_TagKon)
+    # SQL-Bestandteile zusammenbauen
+    select2 <- filtered %>% pull(Select) %>% paste(collapse = " ") %>% gsub("\n", "", .)
+    from2   <- filtered %>% pull(From)   %>% paste(collapse = " ") %>% gsub("\n", "", .)
+    where2  <- filtered %>% pull(Where)  %>% paste(collapse = " ") %>% gsub("\n", "", .)
 
-    W_TagKon <- " AND
-      [Data].[Version].[IdType] IN (135, 121, 124, 174, 106, 168, 116, 112, 118, 141, 146, 142, 145, 148, 102, 144, 172,
-            175, 151, 113, 111, 152, 162, 131, 138, 134, 126, 165, 122, 170, 176, 132, 104, 110, 153, 139, 140, 201, 199,
-            157, 115, 200, 156, 155, 147, 159, 179, 114, 123, 204, 205, 207, 208, 211, 212, 213, 210, 206, 80)"
+    if (nchar(select2) > 0) select_part <- paste0(select_part, ", ", select2)
+    if (nchar(from2)   > 0) from_part   <- paste0(from_part, " ", from2)
+    if (nchar(where2)  > 0) where_part  <- paste0(where_part, " AND ", where2)
 
-    where_part <- paste0(where_part,W_TagKon)
+  } else {
+    message("Kein Thema angegeben. Standard-Abfrage")
+    if (exists("merge_format", envir = .GlobalEnv)) rm(merge_format, envir = .GlobalEnv)
+  }
+
+  # Periode-spezifische Erweiterungen -----------------------------------------
+
+  Periode <- match.arg(Periode)
+  message("Periode ist ",Periode)
+
+  thisweek <- isoweek(Sys.Date())
+  lastweek <- isoweek(Sys.Date()-7)
+  thisyear <- isoyear(Sys.Date())
+  lastweeksyear <- isoyear(Sys.Date()-7)
+  lastyear <- thisyear-1
+  prev5years <- thisyear-4
+  prev10years <- thisyear-9
+
+  if (Periode=="thisyear") {
+    where3 <- paste0(" AND Year=", thisyear)
+    where_part <- paste0(where_part,where3)
   }
 
 
 
+  # Finaler Query -----------------------------------------------------------
   query <- paste0(select_part, from_part, where_part)
+  query <- gsub("[\r\n]", " ", query)
+  query <- gsub("\\s+", " ", query)
+
   return(query)
+
 }
+
+
 
 
 #' import_SurvNet
@@ -88,7 +116,7 @@ build_query <- function(TagKon=FALSE) {
 #'
 #' @import odbc
 #' @examples
-#' import_SurvNet(build_query)
+#' import_SurvNet_general(build_query())
 #'
 #'
 import_SurvNet_general <- function(query){
@@ -115,24 +143,7 @@ import_SurvNet_general <- function(query){
   finally = {
     dbDisconnect(myconn)
   })
+
   return(data)
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

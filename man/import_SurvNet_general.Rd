@@ -13,7 +13,7 @@ A data frame specified columns (hardcoded for now)
 import_SurvNet
 }
 \examples{
-import_SurvNet(build_query)
+import_SurvNet_general(build_query())
 
 
 }
