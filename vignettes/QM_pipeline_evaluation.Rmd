@@ -51,7 +51,7 @@ Re_Eval <- RIDOM_comptable_re_evaluate(
     "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_20/")
 ```
 
-1.   `old_folder` bezeichnet einen Ordner in dem Tabellen als **.csv-Dateien** aus der vorherigen Evaluierung abgelegt sind. Der Ordner wurde mit dem Datum im Format (JJJJ_MM_DD) benannt. Wir notieren den Pfad dieses Ordners. Die Funktion des Pakets wird sicherstellen, dass er die geforderten Dateien ("Comparison tables") enthält.
+1.  `old_folder` bezeichnet einen Ordner in dem Tabellen als **.csv-Dateien** aus der vorherigen Evaluierung abgelegt sind. Der Ordner wurde mit dem Datum im Format (JJJJ_MM_DD) benannt. Wir notieren den Pfad dieses Ordners. Die Funktion des Pakets wird sicherstellen, dass er die geforderten Dateien ("Comparison tables") enthält.
 
 2.  Wir stellen sicher, dass die Evaluierungs-Proben nicht bereits in prozessiert in RIDOM Seqsphere vorleigen (sie 4. unten) und kopieren nun die Rohdaten für die Evaluierung auf dem Linux Server in einen Ordner, der von der zu evaluierenden Pipeline in RIDOM Seqsphere überwacht wird. Dadurch werden die Proben prozessiert.
 
