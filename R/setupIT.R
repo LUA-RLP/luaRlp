@@ -72,3 +72,121 @@ lua_is_online <- function(timeout = 15, url = "http://www.google.com"){
 #                         "Viel Spaß bei wichtigen Amtsaufgaben in R!",
 #                         " \033[35m🦠\033[32m🏥")
 # }
+
+
+
+
+#' lua_network_speedtest()
+#'
+#' @param net_path Path on the Network you want to test. Defaults to a path on O:
+#' @param loc_path Local path. Defaults to a path on your user's desktop
+#'
+#' @returns writes speed estimates to console
+#' @export
+#'
+#' @examples lua_network_speedtest()
+lua_network_speedtest <- function(net_path="O:/Abteilung Humanmedizin (AHM)/Referat 32/R_scratch/R_IO_test_network.txt",
+                                  loc_path=file.path(Sys.getenv("USERPROFILE"), "Desktop", "R_IO_test_local.txt")
+) {
+
+  ## Pfade festlegen
+  local_path <- loc_path
+  network_path <- net_path
+
+  # Testdaten erzeugen (10 MB Text)
+  test_data <- paste(rep("ABCDEFGHIKLMNOPQRSTUVWXYZ0123456789", 300000), collapse = "\n")
+
+  # Schreiben testen
+  cat("### WRITE SPEED ###\n")
+
+  local_write <- system.time(
+    writeLines(test_data, local_path)
+  )
+  cat("Local write time:   ", local_write["elapsed"], "sec\n")
+
+  network_write <- system.time(
+    writeLines(test_data, network_path)
+  )
+  cat("Network write time: ", network_write["elapsed"], "sec\n\n")
+
+  # Lesen testen
+  cat("### READ SPEED ###\n")
+
+  local_read <- system.time(
+    readLines(local_path, warn = FALSE)
+  )
+  cat("Local read time:    ", local_read["elapsed"], "sec\n")
+
+  network_read <- system.time(
+    readLines(network_path, warn = FALSE)
+  )
+  cat("Network read time:  ", network_read["elapsed"], "sec\n\n")
+
+}
+
+
+#' check_r_storage_paths
+#'
+#' @returns writes R path configuration to console
+#' @export
+#'
+#' @examples check_r_storage_paths()
+check_r_storage_paths <- function() {
+  cat("==== R STORAGE PATH DIAGNOSTICS ====\n\n")
+
+  # 1. R Library paths
+  cat("📦 .libPaths():\n")
+  print(.libPaths())
+  cat("\n")
+
+  # Check for network paths
+  network_libs <- .libPaths()[grepl("^O:|^\\\\\\\\", .libPaths(), ignore.case = TRUE)]
+  if(length(network_libs) > 0) {
+    cat("⚠️  WARNUNG: Einige Libraries liegen auf dem Netzlaufwerk:\n")
+    print(network_libs)
+    cat("→ Pakete dort laden/compilieren ist *massiv* langsam!\n\n")
+  } else cat("✅ Keine Library-Pfade auf einem Netzlaufwerk gefunden.\n\n")
+
+  # 2. R Temp directory
+  cat("🧪 Temp directory (tempdir()):\n")
+  print(tempdir())
+  cat("\n")
+
+  if(grepl("^O:|^\\\\\\\\", tempdir(), ignore.case = TRUE)) {
+    cat("⚠️  WARNUNG: tempdir() liegt auf dem Netzlaufwerk!\n",
+        "→ Das verlangsamt *jedes* Paket (inkl. devtools::load_all()).\n\n")
+  } else cat("✅ tempdir() ist lokal.\n\n")
+
+
+  # 3. R HOME
+  cat("🏠 R_HOME:\n")
+  print(R.home())
+  cat("\n")
+
+  # 4. User / system config files
+  cat("⚙️  Nutzer-Konfigurationen:\n")
+  user_profile <- path.expand("~/.Rprofile")
+  user_renviron <- path.expand("~/.Renviron")
+  site_profile <- file.path(R.home("etc"), "Rprofile.site")
+  site_renviron <- file.path(R.home("etc"), "Renviron.site")
+
+  paths <- data.frame(
+    file = c("User .Rprofile", "User .Renviron", "Site Rprofile", "Site Renviron"),
+    exists = file.exists(c(user_profile, user_renviron, site_profile, site_renviron)),
+    location = c(user_profile, user_renviron, site_profile, site_renviron)
+  )
+  print(paths)
+  cat("\n")
+
+  # 5. devtools project root
+  if (requireNamespace("devtools", quietly = TRUE)) {
+    cat("🧱 devtools::as.package() Projektpfad (falls in Projekt ausgeführt):\n")
+    try(print(devtools::as.package(".")$path), silent = TRUE)
+    cat("\n")
+  }
+
+  cat("==== DONE ====\n")
+}
+
+
+

@@ -4,7 +4,11 @@
 \alias{build_query}
 \title{Funktion zum Aufbau eines Abfragetexts (SQL-Language) für die SurvNet-Abfrage}
 \usage{
-build_query(Thema = NULL, Periode = NULL)
+build_query(
+  Thema = NULL,
+  Periode = c("alle", "last2weeks", "thisyear", "last2years", "last5years",
+    "last10years")
+)
 }
 \arguments{
 \item{Thema}{Auswahl zwischen alle, Tageskontrolle, VHF, WBK, Arboviren, ZoonotischeINV, SerovarSAL, Influenza, COVID19, RSV}
