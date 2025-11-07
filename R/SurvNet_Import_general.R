@@ -47,7 +47,7 @@ build_query <- function(Thema=NULL, Periode=c("alle","last2weeks","thisyear","la
     WHERE (GETDATE() BETWEEN [Data].[Version].[ValidFrom] AND [Data].[Version].[ValidUntil]) AND
     [Data].[Version].[IsActive] = 1 AND
     [Data].[Version].[IdRecordType] = 1 AND
-    [Data].[Disease71].[ReportingState] = 13000007 AND Year=2025"
+    [Data].[Disease71].[ReportingState] = 13000007"
 
   # Thema-spezifische Erweiterungen -----------------------------------------
   if (!is.null(Thema)) {
@@ -84,16 +84,35 @@ build_query <- function(Thema=NULL, Periode=c("alle","last2weeks","thisyear","la
   thisweek <- isoweek(Sys.Date())
   lastweek <- isoweek(Sys.Date()-7)
   thisyear <- isoyear(Sys.Date())
-  lastweeksyear <- isoyear(Sys.Date()-7)
+  lastweekyear <- isoyear(Sys.Date()-7)
   lastyear <- thisyear-1
   prev5years <- thisyear-4
   prev10years <- thisyear-9
+
+  if (Periode=="last2weeks") {
+    where3 <- paste0(" AND ((Week=", thisweek, " AND Year=", thisyear, ") OR (Week=", lastweek, " AND Year=", lastweekyear, "))")
+    where_part <- paste0(where_part,where3)
+  }
 
   if (Periode=="thisyear") {
     where3 <- paste0(" AND Year=", thisyear)
     where_part <- paste0(where_part,where3)
   }
 
+  if (Periode=="last2years") {
+    where3 <- paste0(" AND (Year BETWEEN ", lastyear, " AND ", thisyear, ")")
+    where_part <- paste0(where_part,where3)
+  }
+
+  if (Periode=="last5years") {
+    where3 <- paste0(" AND (Year BETWEEN ", prev5years, " AND ", thisyear, ")")
+    where_part <- paste0(where_part,where3)
+  }
+
+  if (Periode=="last10years") {
+    where3 <- paste0(" AND (Year BETWEEN ", prev10years, " AND ", thisyear, ")")
+    where_part <- paste0(where_part,where3)
+  }
 
 
   # Finaler Query -----------------------------------------------------------
