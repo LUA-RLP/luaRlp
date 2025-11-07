@@ -4,7 +4,7 @@
 \alias{import_SurvNet_general}
 \title{import_SurvNet}
 \usage{
-import_SurvNet_general(query)
+import_SurvNet_general(query = build_query())
 }
 \value{
 A data frame specified columns (hardcoded for now)
