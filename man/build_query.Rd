@@ -7,13 +7,13 @@
 build_query(
   Thema = NULL,
   Periode = c("alle", "last2weeks", "thisyear", "last2years", "last5years",
-    "last10years")
+    "last10years", "IMS_since_2023")
 )
 }
 \arguments{
-\item{Thema}{Auswahl zwischen alle, Tageskontrolle, VHF, WBK, Arboviren, ZoonotischeINV, SerovarSAL, Influenza, COVID19, RSV}
+\item{Thema}{Auswahl zwischen alle, Tageskontrolle, VHF, WBK, Arboviren, ZoonotischeINV, SerovarSAL, Influenza, COVID19, RSV, IMS_RIDOM}
 
-\item{Periode}{}
+\item{Periode}{Auswahl zwischen alle, last2weeks, thisyear, last2years, last5years, last10years, IMS_since_2023}
 }
 \value{
 Ausgabe wird in der Funktion import_SurvNet_general verwendet.

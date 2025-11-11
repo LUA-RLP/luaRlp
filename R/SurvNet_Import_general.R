@@ -5,8 +5,8 @@
 #' @title Funktion zum Aufbau eines Abfragetexts (SQL-Language) für die SurvNet-Abfrage
 #' @description Es können spezielle vorgefertigte Abfragen erstellt werden.//
 #'              Zusätzlich kann die Periode der Abfrage unabhängig davon festgelegt werden.
-#' @param Thema Auswahl zwischen alle, Tageskontrolle, VHF, WBK, Arboviren, ZoonotischeINV, SerovarSAL, Influenza, COVID19, RSV
-#' @param Periode
+#' @param Thema Auswahl zwischen alle, Tageskontrolle, VHF, WBK, Arboviren, ZoonotischeINV, SerovarSAL, Influenza, COVID19, RSV, IMS_RIDOM
+#' @param Periode Auswahl zwischen alle, last2weeks, thisyear, last2years, last5years, last10years, IMS_since_2023
 #'
 #' @return Ausgabe wird in der Funktion import_SurvNet_general verwendet.
 #'
@@ -15,14 +15,13 @@
 #' @examples
 #' query <- build_query(Thema="Tageskontrolle")
 #'
-build_query <- function(Thema=NULL, Periode=c("alle","last2weeks","thisyear","last2years","last5years","last10years")) {
+build_query <- function(Thema=NULL, Periode=c("alle","last2weeks","thisyear","last2years","last5years","last10years","IMS_since_2023")) {
 
   select_part <- "
     SELECT DISTINCT
       [Data].[Disease71].[IdVersion],
       [Data].[Version].[Token] AS 'Aktenzeichen',
-      (SELECT I.ItemName FROM Meta.Catalogue2Item AS C2I INNER JOIN Meta.Item AS I ON C2I.IdItem = I.IdItem
-              WHERE C2I.IdCatalogue = 1010 AND I.IdIndex = [Data].[Disease71].[ReportingCounty]) AS 'Meldelandkreis',
+      [Data].[Disease71].[ReportingCounty] AS 'LK_ID',
       [Data].[Version].[IdType],
       [Data].[Disease71].[ReferenceDefComputed] AS 'Referenzdefinition',
       [Data].[Version].[CodeRecordOwner] AS 'Eigentuemer',
@@ -30,9 +29,8 @@ build_query <- function(Thema=NULL, Periode=c("alle","last2weeks","thisyear","la
       [Data].[Disease71].[Sex] AS 'Geschlecht',
       [Data].[Disease71].[ReportingDate] AS 'Meldedatum',
       [Data].[Disease71].[AgeComputed],
-      (CASE [Data].[Disease71].[StatusHospitalization] WHEN 0 THEN '-nicht erhoben-' WHEN 10 THEN 'Nein' WHEN 20 THEN 'Ja' ELSE 'u' END)
-             AS 'HospitalisierungStatus',
-      (CASE [Data].[Disease71].[StatusDeceased] WHEN 10 THEN 'Nein' WHEN 20 THEN 'Ja' ELSE 'u' END) AS 'VerstorbenStatus',
+      [Data].[Disease71].[StatusHospitalization] AS 'HospitalisierungStatus',
+      [Data].[Disease71].[StatusDeceased] AS 'VerstorbenStatus',
       [Data].[Disease71].[OnsetOfDisease] AS 'Erkrankungsbeginn',
       DT1001.Week,
       DT1001.Year,
@@ -114,6 +112,10 @@ build_query <- function(Thema=NULL, Periode=c("alle","last2weeks","thisyear","la
     where_part <- paste0(where_part,where3)
   }
 
+  if (Periode=="IMS_since_2023") {
+    where3 <- " AND Year>=2023"
+    where_part <- paste0(where_part,where3)
+  }
 
   # Finaler Query -----------------------------------------------------------
   query <- paste0(select_part, from_part, where_part)
@@ -165,4 +167,83 @@ import_SurvNet_general <- function(query = build_query()){
 
   return(data)
 }
+
+
+
+
+
+
+
+
+#'  Add values
+#'
+#' @return A data frame with columns, where value labels have been added for specific variables
+#'
+#' @export
+#'
+#' @import dplyr
+#'
+#' @examples
+#' add_values(import_SurvNet_general(build_query()))
+#'
+#'
+add_values <- function(df) {
+
+  # Standard-Mutates, die immer existieren
+  df <- df %>%
+    mutate(
+      Meldedatum = as.Date(.data$Meldedatum),
+      HospitalisierungStatus = recode(as.character(.data$HospitalisierungStatus),
+                                      "10" = "nein", "20" = "ja", "-1" = "-nicht ermittelbar-",
+                                      "0" = "-nicht erhoben-"),
+      VerstorbenStatus = recode(as.character(.data$VerstorbenStatus),
+                                "10" = "nein", "20" = "ja", "-1" = "-nicht ermittelbar-",
+                                "0" = "-nicht erhoben-"),
+      Geschlecht = recode(as.character(.data$Geschlecht),
+                          "1" = "männlich", "2" = "weiblich", "3" = "nicht-binär",
+                          "-1" = "-nicht ermittelbar-", "0" = "-nicht erhoben-"),
+      Referenzdefinition = recode(as.character(.data$Referenzdefinition),
+                                  "1" = "Ja", "0" = "nein")
+    ) %>%
+    rename(Meldejahr = WeekYear, Meldewoche = Week, AlterBerechnet = AgeComputed)
+
+  # Optionale Spalten nur hinzufügen, wenn sie existieren
+  if ("GültigAb_DMYhs" %in% names(df)) {
+    df$GültigAb <- as.Date(df$GültigAb_DMYhs)
+  }
+  if ("AtGACreated" %in% names(df)) {
+    df$AtGA <- as.Date(df$AtGACreated)
+  }
+  if ("AtLSCreated" %in% names(df)) {
+    df$AtLS <- as.Date(df$AtLSCreated)
+  }
+  if ("Falldefkategorie" %in% names(df)) {
+    df$Falldefkategorie <- recode(
+      trimws(as.character(df$Falldefkategorie)),
+      "-1" = "-nicht ermittelbar",
+      "1" = "klinisch",
+      "2" = "klinisch-epidemiologisch",
+      "3" = "klinisch-labordiagnostisch",
+      "4" = "laborsdiagnostisch bei nicht erfüllter Klinik",
+      "5" = "labordiagnostisch bei unbekannter Klinik",
+      "11" = "spezifisch klinisch",
+      "31" = "klinisch-labordiagnostisch (C1)"
+    )
+  }
+  if ("P112Relevant_" %in% names(df)) {
+    df$P112Relevant_ <- recode(trimws(as.character(df$P112Relevant_)), "1" = "Ja", "0" = "nein")
+  }
+  # Merge immer
+  df <- merge(df, geo_standards, by = "LK_ID")
+  df <- merge(df, IdType_Datensatzkategorie, by = "IdType")
+
+  # Merge nur, wenn Region_ID existiert
+  if ("Region_ID" %in% names(df)) {
+    df <- merge(df, Regionen, by = "Region_ID")
+  }
+
+  return(df)
+}
+
+
 
