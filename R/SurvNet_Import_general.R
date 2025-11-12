@@ -5,6 +5,8 @@
 #' @title Funktion zum Aufbau eines Abfragetexts (SQL-Language) für die SurvNet-Abfrage
 #' @description Es können spezielle vorgefertigte Abfragen erstellt werden.//
 #'              Zusätzlich kann die Periode der Abfrage unabhängig davon festgelegt werden.
+#'              Das Thema Tageskontrolle wird gewöhnlich mit der Periode last2weeks kombiniert
+#'              Das Thmea IMS_RIDOM wird gewöhnlich mit der Periode IMS_since_2023 kombiniert.
 #' @param Thema Auswahl zwischen alle, Tageskontrolle, VHF, WBK, Arboviren, ZoonotischeINV, SerovarSAL, Influenza, COVID19, RSV, IMS_RIDOM
 #' @param Periode Auswahl zwischen alle, last2weeks, thisyear, last2years, last5years, last10years, IMS_since_2023
 #'
@@ -33,7 +35,6 @@ build_query <- function(Thema=NULL, Periode=c("alle","last2weeks","thisyear","la
       [Data].[Disease71].[StatusDeceased] AS 'VerstorbenStatus',
       [Data].[Disease71].[OnsetOfDisease] AS 'Erkrankungsbeginn',
       DT1001.Week,
-      DT1001.Year,
       DT1001.WeekYear"
 
   from_part <- "
@@ -193,6 +194,7 @@ add_values <- function(df) {
   df <- df %>%
     mutate(
       Meldedatum = as.Date(.data$Meldedatum),
+      Erkrankungsbeginn = as.Date(.data$Erkrankungsbeginn),
       HospitalisierungStatus = recode(as.character(.data$HospitalisierungStatus),
                                       "10" = "nein", "20" = "ja", "-1" = "-nicht ermittelbar-",
                                       "0" = "-nicht erhoben-"),
@@ -233,16 +235,57 @@ add_values <- function(df) {
   if ("P112Relevant_" %in% names(df)) {
     df$P112Relevant_ <- recode(trimws(as.character(df$P112Relevant_)), "1" = "Ja", "0" = "nein")
   }
+  if ("StatusPlaceOfInf_" %in% names(df)) {
+    df$StatusPlaceOfInf_ <- recode(
+     as.character(df$StatusPlaceOfInf_),
+      "10" = "nein", "20" = "ja", "-1" = "-nicht ermittelbar-",
+      "0" = "-nicht erhoben-")
+  }
+  if ("StatusPatientSetting_" %in% names(df)) {
+    df$StatusPatientSetting_ <- recode(
+      trimws(as.character(df$StatusPatientSetting_)),
+      "-1" = "-nicht ermittelbar",
+      "0" = "-nicht erhoben-",
+      "10" = "ohne",
+      "19" = "Betreut/untergebracht in Einrichtung gemäß §23",
+      "20" = "Tätigkeit in Einrichtungen gemäß §23",
+      "21" = "Betreut in Gemeinschaftseinrichtung nach §33",
+      "22" = "Tätigkeit in Einrichtungen gemäß §33",
+      "23" = "Betreut in Einrichtung nach §36",
+      "24" = "Tätigkeit in Einrichtung nach §36",
+      "25" = "Tätigkeit mit Lebensmitteln nach §42"
+    )
+  }
+
   # Merge immer
-  df <- merge(df, geo_standards, by = "LK_ID")
-  df <- merge(df, IdType_Datensatzkategorie, by = "IdType")
+  df <- merge(df, geo_standards, all.x=TRUE, by = "LK_ID")
+  df <- merge(df, IdType_Datensatzkategorie, all.x=TRUE, by = "IdType")
 
   # Merge nur, wenn Region_ID existiert
   if ("Region_ID" %in% names(df)) {
-    df <- merge(df, Regionen, by = "Region_ID")
+    df <- merge(df, Regionen, all.x=TRUE, by = "Region_ID")
+    df$Region_ID <- NULL
+    # Erkennen, welche IdRecords mehrfach vorkommen
+    dups <- duplicated(df$IdRecord) | duplicated(df$IdRecord, fromLast = TRUE)
+    # Für diese IDs den Wert ersetzen
+    df$Angabe_zum_Expositionsort[df$IdRecord %in% df$IdRecord[dups]] <- "mehrere Expositionsorte"
+    # Danach nur erste Zeile pro ID behalten
+    df <- df[!duplicated(df$IdRecord), ]
   }
 
+  # Merge nur, wenn PathogenABV existiert
+  if ("PathogenABV_ID" %in% names(df)) {
+    df <- merge(df, PathogenABV, all.x=TRUE, by = "PathogenABV_ID")
+    #df$PathogenABV_ID <- NULL
+  }
+
+  #Unnötige oder doppelte Spalten entfernen
+  spalten_entfernen <- c("Eigentuemer", "AtGACreated", "AtLSCreated", "GültigAb_DMYhs", "IdType", "LK_ID", "Kürzel", "PlaceOfInf_")
+  df <- df[, !(names(df) %in% spalten_entfernen)]
+
   return(df)
+
+
 }
 
 
