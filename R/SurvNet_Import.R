@@ -3,7 +3,8 @@
 #'
 #' @param LIMS_link_file The file (exported from our LIMS) associating our
 #' LUA Probennummern (3263-) and SurvNet IDs (Aktenzeichen with licence plate
-#' prefix)
+#' prefix), defaults to a path on our System on which automated LIMS exports are
+#' stored
 #'
 #' @param out The output file in xlsx format (defaults to  SurvNetExport4RIDOM
 #' plus the current timestamp wirtten into
@@ -24,10 +25,10 @@
 #'
 #' @format  The xlsx file written to "out" has the following columns:
 #' \describe{
-#'   \item{Sample ID}{Character. As "Labornummer" from LIMS}
+#'   \item{Sample ID}{Character. As "Laborprobennummer" from LIMS}
 #'   \item{Alias ID (s)}{Character. This is the \strong{merge key}! As
-#'   "SurvNet.AZ" from SurvNet and as "Aktenzeichen" from LIMS.}
-#'   \item{Zip of Isolation}{Character. As PLZ from LIMS}
+#'   "Survnet" from SurvNet and as "Aktenzeichen" from LIMS.}
+#'   \item{Zip of Isolation}{Character. As Postleitzahl from LIMS}
 #'   \item{IdRecord}{Character. Unchanged from SurvNet}
 #'   \item{Collection Date}{Date. As Meldedatum from SurvNet}
 #'   \item{Gesundheitsamt}{Character. Via merge based on
@@ -68,7 +69,9 @@
 #' @importFrom utils read.delim
 #' @importFrom writexl write_xlsx
 #'
-create_Epidata <- function(LIMS_link_file,
+create_Epidata <- function(
+    LIMS_link_file =
+      "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS_Export_auto/LIMS_Export.csv"                         ,
          out =
            paste0("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Import/",
                   "SurvNetExport4RIDOM",
@@ -84,17 +87,17 @@ create_Epidata <- function(LIMS_link_file,
     .cleanup_RIDOM()
   IDs <- read.delim(LIMS_link_file, sep = ";")
   Out_EpiDaten <- inner_join(IDs, SN,
-                             by = c("SurvNet.AZ" = "Aktenzeichen")) %>%
+                             by = c("Survnet" = "Aktenzeichen")) %>%
     ## rename variables coming from the LIMS merger!
-    rename(`Sample ID` = .data$Labornummer,
-           `Alias ID (s)` =.data$SurvNet.AZ,
-           `Zip of Isolation` = .data$PLZ)
+    rename(`Sample ID` = .data$Laborprobennummer,
+           `Alias ID (s)` =.data$Survnet,
+           `Zip of Isolation` = .data$Postleitzahl)
   write_xlsx(Out_EpiDaten, out)
   ### optinal reporting of a problems-file
   if(!is.null(problems)){
     if(type_of_problem %in%(c("non-matching-LIMS"))){
       p <- IDs %>%
-        filter(!SurvNet.AZ %in% SN$Aktenzeichen)
+        filter(!Survnet %in% SN$Aktenzeichen)
       write_csv(p, problems)
     }else{
       stop("Choose a type of problem to report when requesting problems output")
