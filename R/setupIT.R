@@ -102,12 +102,13 @@ lua_network_speedtest <- function(net_path="O:/Abteilung Humanmedizin (AHM)/Refe
   local_write <- system.time(
     writeLines(test_data, local_path)
   )
-  cat("Local write time:   ", local_write["elapsed"], "sec\n")
+  cat("Local write time:   ", local_write["elapsed"], "sec on", local_path, "\n")
 
   network_write <- system.time(
     writeLines(test_data, network_path)
   )
-  cat("Network write time: ", network_write["elapsed"], "sec\n\n")
+  cat("Network write time: ", network_write["elapsed"], "sec on",
+      network_path, "\n\n")
 
   # Lesen testen
   cat("### READ SPEED ###\n")
@@ -115,12 +116,13 @@ lua_network_speedtest <- function(net_path="O:/Abteilung Humanmedizin (AHM)/Refe
   local_read <- system.time(
     readLines(local_path, warn = FALSE)
   )
-  cat("Local read time:    ", local_read["elapsed"], "sec\n")
+  cat("Local read time:    ", local_read["elapsed"], "sec on", local_path, "\n")
 
   network_read <- system.time(
     readLines(network_path, warn = FALSE)
   )
-  cat("Network read time:  ", network_read["elapsed"], "sec\n\n")
+  cat("Network read time:  ", network_read["elapsed"], "sec on",
+      network_path, "\n\n")
 
 }
 
