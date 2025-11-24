@@ -141,7 +141,7 @@ build_query <- function(Thema=NULL, Periode=c("alle","last2weeks","thisyear","la
 #' import_SurvNet(build_query())
 #'
 #'
-import_SurvNet <- function(query = build_query()){
+import_SurvNet <- function(query){
   dsn <- odbcListDataSources()$name
   if (length(dsn) != 1) {
     if (length(dsn) > 1) {
