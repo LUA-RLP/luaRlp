@@ -13,7 +13,7 @@ A data frame with columns, where value labels have been added for specific varia
 Add values
 }
 \examples{
-add_values(import_SurvNet_general(build_query()))
+add_values(import_SurvNet(build_query()))
 
 
 }

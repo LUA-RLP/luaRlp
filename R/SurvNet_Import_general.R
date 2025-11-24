@@ -10,7 +10,7 @@
 #' @param Thema Auswahl zwischen alle, Tageskontrolle, VHF, WBK, Arboviren, ZoonotischeINV, SerovarSAL, Influenza, COVID19, RSV, IMS_RIDOM
 #' @param Periode Auswahl zwischen alle, last2weeks, thisyear, last2years, last5years, last10years, IMS_since_2023
 #'
-#' @return Ausgabe wird in der Funktion import_SurvNet_general verwendet.
+#' @return Ausgabe wird in der Funktion import_SurvNet verwendet.
 #'
 #' @export
 #'
@@ -138,10 +138,10 @@ build_query <- function(Thema=NULL, Periode=c("alle","last2weeks","thisyear","la
 #'
 #' @import odbc
 #' @examples
-#' import_SurvNet_general(build_query())
+#' import_SurvNet(build_query())
 #'
 #'
-import_SurvNet_general <- function(query = build_query()){
+import_SurvNet <- function(query = build_query()){
   dsn <- odbcListDataSources()$name
   if (length(dsn) != 1) {
     if (length(dsn) > 1) {
@@ -185,7 +185,7 @@ import_SurvNet_general <- function(query = build_query()){
 #' @import dplyr
 #'
 #' @examples
-#' add_values(import_SurvNet_general(build_query()))
+#' add_values(import_SurvNet(build_query()))
 #'
 #'
 add_values <- function(df) {

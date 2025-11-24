@@ -16,11 +16,13 @@ build_query(
 \item{Periode}{Auswahl zwischen alle, last2weeks, thisyear, last2years, last5years, last10years, IMS_since_2023}
 }
 \value{
-Ausgabe wird in der Funktion import_SurvNet_general verwendet.
+Ausgabe wird in der Funktion import_SurvNet verwendet.
 }
 \description{
 Es können spezielle vorgefertigte Abfragen erstellt werden.//
              Zusätzlich kann die Periode der Abfrage unabhängig davon festgelegt werden.
+             Das Thema Tageskontrolle wird gewöhnlich mit der Periode last2weeks kombiniert
+             Das Thmea IMS_RIDOM wird gewöhnlich mit der Periode IMS_since_2023 kombiniert.
 }
 \details{
 SurvNet_Abfrage
