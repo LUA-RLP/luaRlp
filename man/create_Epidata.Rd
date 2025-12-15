@@ -51,7 +51,8 @@ create_Epidata(
     paste0("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Import/",
     "SurvNetExport4RIDOM", format(Sys.time(), "\%Y-\%m-\%d_\%H-\%M-\%S"), ".xlsx"),
   problems = NULL,
-  type_of_problem = "non-matching-LIMS"
+  type_of_problem = "non-matching-LIMS",
+  ...
 )
 }
 \arguments{

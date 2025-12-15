@@ -4,7 +4,7 @@
 \alias{import_SurvNet}
 \title{import_SurvNet}
 \usage{
-import_SurvNet(query)
+import_SurvNet(query, dsn = odbcListDataSources()$name)
 }
 \value{
 A data frame specified columns (hardcoded for now)

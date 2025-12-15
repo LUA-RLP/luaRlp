@@ -76,10 +76,11 @@ create_Epidata <- function(
            paste0("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Import/",
                   "SurvNetExport4RIDOM",
                   format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), ".xlsx"),
-         problems = NULL,
-         type_of_problem = "non-matching-LIMS"
-         ){
-  SN <- import_SurvNet(build_query(Thema = "IMS"))
+    SurvNet = import_SurvNet(build_query(Thema = "IMS"), ...),
+    problems = NULL,
+    type_of_problem = "non-matching-LIMS", ...
+){
+  SN <- SruvNet
   SN <- merge(SN, geo_standards, by = "LK_ID") %>%
     .combine_exposure() %>%
     .append_LK_LatLong() %>%

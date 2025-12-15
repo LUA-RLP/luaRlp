@@ -24,17 +24,17 @@ library(luaRlp)
 Nach dem laden unseres Pakets (mit `library(luaRlp)`). Lässt sich die Funktion wie folgt ausführen:
 
 ```{r topLevel}
-Epidata4Import <- create_Epidata("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Export Merger/Import2.csv")
+Epidata4Import <- create_Epidata(LIMS_link_file = "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Export Merger/Import2.csv")
 ```
 
-Dafür wird ein Export aus unserem LIMS benötigt (hier `Import2.csv` abgelegt unter `O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Export Merger/`)
+Dafür wird ein Export aus unserem LIMS benötigt, dieser wird automatisch erstellt und unter `O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS_Export_auto/LIMS_Export.csv` abgelegt. Die Funktion liest diesen Export (als default) ein, lass sich aber auch (mit dem Argument `LIMS_link_file`) anders konfigurieren.
 
 Dadurch wird eine Dateien zm Import in RIDOM ("Import Metadata") generiert. Diese Datei eignet sich zur automatischen Zuweisung des "Projekts" und zum automatischen Erkennen von Spalten für RIDOM Datenbank-Felder.
 
 Soll darüber hinaus eine Datei mit "problematischen Einträgen" aus dem LIMS generiert werden kann dies mithilfe des folgenden Codes geschehen:
 
 ```{r problems}
-Epidata4Import <- create_Epidata("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Export Merger/Import2.csv", 
+Epidata4Import <- create_Epidata(LIMS_link_file = "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Export Merger/Import2.csv", 
                 problems = "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Export Merger/Problems.csv")
 ```
 

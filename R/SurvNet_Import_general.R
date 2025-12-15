@@ -141,15 +141,20 @@ build_query <- function(Thema=NULL, Periode=c("alle","last2weeks","thisyear","la
 #' import_SurvNet(build_query())
 #'
 #'
-import_SurvNet <- function(query){
-  dsn <- odbcListDataSources()$name
-  if (length(dsn) != 1) {
-    if (length(dsn) > 1) {
-      stop(paste("Multiple potential SurvNet data sources detected.",
-                 "Please select one of:", paste(dsn, collapse = ", ")))
-    } else {
-      stop("No data source detected. Please configure ODBC.")
-    }
+import_SurvNet <- function(query,  dsn = NULL){
+  if (is.null(dsn)) {
+    dsn <- odbc::odbcListDataSources()$name
+  }
+  message("SurvNet Datenbank ist: ", dsn, "\n")
+  if (length(dsn) == 0) {
+    stop("Keine Datenquelle gefunden. Bitte konfiguriere ODBC.")
+  }
+  if (length(dsn) > 1) {
+    stop(paste("Es wurden mehrere mögliche Datenbanken",
+               "detektiert, WÄHLEN SIE eine der Quellen",
+               paste(dsn, collapse = ", "),
+               "und gebe sie diese als dsn = \"Option\" an.")
+    )
   }
   # Connect if exactly one DSN is found
   myconn <- dbConnect(odbc(), dsn = dsn)
