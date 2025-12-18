@@ -80,7 +80,7 @@ create_Epidata <- function(
     problems = NULL,
     type_of_problem = "non-matching-LIMS", ...
 ){
-  SN <- SruvNet
+  SN <- SurvNet
   SN <- merge(SN, geo_standards, by = "LK_ID") %>%
     .combine_exposure() %>%
     .append_LK_LatLong() %>%
