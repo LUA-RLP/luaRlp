@@ -20,7 +20,8 @@ library(fs)
 # ---- CONFIG ----
 
 # Root directory containing run folders
-DATA_ROOT <- Sys.getenv("NF_FLU_DATA_ROOT", unset = "/data/NF/NF_FLU")
+## DATA_ROOT <- Sys.getenv("NF_FLU_DATA_ROOT", unset = "/data/NF/NF_FLU")
+DATA_ROOT <- Sys.getenv("NF_FLU_DATA_ROOT", unset = "/data/NF/backup_NF_FLU_backup")
 
 # If your webserver exposes DATA_ROOT at some URL, set BASE_URL.
 # Example: BASE_URL <- "https://internal.example.org/nf_flu"
