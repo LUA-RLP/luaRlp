@@ -1,7 +1,8 @@
-# app.R  (LAZY + STABLE baseline)
-# - Fast startup: runs table does NOT read per-run metrics.
-# - Metrics (samples/readcount/nextclade/subtyping) computed ONLY for selected run.
-# - Avoids Shiny "Disconnected from server" due to heavy startup scans.
+# app.R (HARDENED + VERY VERBOSE)
+# - Fixes: 'length = ...' in coercion to 'logical(1)'
+# - Forces scalar extraction from selected run row
+# - Empty-tibble fallbacks for optional files
+# - Lazy metrics: runs table is fast; sample table computed only for selected run
 # - App author: Emanuel Heitlinger
 
 library(shiny)
@@ -15,7 +16,6 @@ library(tibble)
 
 # ---------------- CONFIG ----------------
 
-# TEST root (requested)
 DATA_ROOT <- Sys.getenv("NF_FLU_DATA_ROOT", unset = "/data/NF/backup_NF_FLU_backup")
 # Production later:
 # DATA_ROOT <- Sys.getenv("NF_FLU_DATA_ROOT", unset = "/data/NF/NF_FLU")
@@ -23,12 +23,23 @@ DATA_ROOT <- Sys.getenv("NF_FLU_DATA_ROOT", unset = "/data/NF/backup_NF_FLU_back
 BASE_URL <- Sys.getenv("NF_FLU_BASE_URL", unset = "")
 if (BASE_URL == "") BASE_URL <- NULL
 
-REFRESH_MS <- as.integer(Sys.getenv("NF_FLU_REFRESH_MS", unset = "120000")) # 2 min default (gentler)
+REFRESH_MS <- as.integer(Sys.getenv("NF_FLU_REFRESH_MS", unset = "120000")) # 2 min
 
 # ---------------- helpers ----------------
 
 `%||%` <- function(a, b) if (!is.null(a) && !is.na(a) && a != "") a else b
 rtrim_slash <- function(x) sub("/+$", "", x)
+
+scalar_chr <- function(x) {
+  if (is.null(x) || length(x) < 1) return(NA_character_)
+  as.character(x[[1]])
+}
+scalar_lgl <- function(x) {
+  if (is.null(x) || length(x) < 1) return(FALSE)
+  isTRUE(x[[1]])
+}
+
+dbg <- function(...) message(sprintf("[nf-flu shiny] %s", paste0(..., collapse = "")))
 
 path_to_url <- function(fs_path) {
   if (is.null(BASE_URL)) return(NULL)
@@ -86,6 +97,7 @@ read_samplesheet <- function(samplesheet_path) {
   if (is.na(samplesheet_path) || !file_exists(samplesheet_path)) return(NULL)
   ss <- suppressWarnings(read_csv(samplesheet_path, show_col_types = FALSE))
   if (!("sample" %in% names(ss))) return(NULL)
+
   ss %>%
     rename(sample_id = sample) %>%
     mutate(sample_id = as.character(sample_id)) %>%
@@ -106,20 +118,20 @@ standardize_sample_id <- function(df) {
   df %>% mutate(sample_id = as.character(sample_id))
 }
 
-# Empty fallbacks (so joins NEVER break)
+# Empty tables so joins never break
 empty_rc  <- function() tibble(sample_id = character(), read_count = numeric())
 empty_nx  <- function() tibble(sample_id = character(), clade = character(), subclade = character(),
                                qc_status = character(), qc_score = numeric())
 empty_sub <- function() tibble(sample_id = character(), influenza_type = character(),
                                H = character(), N = character(), subtype = character())
 
-read_nextclade <- function(results_dir) {
+read_nextclade_raw <- function(results_dir) {
   f <- path(results_dir, "nextclade", "nextclade.tsv")
   if (!file_exists(f)) return(NULL)
   suppressWarnings(read_tsv(f, show_col_types = FALSE))
 }
 
-read_subtyping <- function(results_dir) {
+read_subtyping_raw <- function(results_dir) {
   f <- path(results_dir, "subtyping_report", "subtype_results.csv")
   if (!file_exists(f)) return(NULL)
   suppressWarnings(read_csv(f, show_col_types = FALSE))
@@ -128,6 +140,7 @@ read_subtyping <- function(results_dir) {
 read_pass_readcount_raw <- function(results_dir) {
   f <- path(results_dir, "read_count", "pass_read_count_samples_mqc.tsv")
   if (!file_exists(f)) return(NULL)
+
   rc <- suppressWarnings(read_tsv(f, show_col_types = FALSE))
   if (is.null(rc) || ncol(rc) < 2) {
     rc <- suppressWarnings(read_delim(f, delim = "\\s+", show_col_types = FALSE, trim_ws = TRUE))
@@ -158,22 +171,24 @@ extract_readcount <- function(rc_raw) {
 extract_nextclade <- function(nx_df) {
   if (is.null(nx_df)) return(NULL)
   nx_df <- standardize_sample_id(nx_df) %>% mutate(sample_id = normalize_id(sample_id))
-  nms <- names(nx_df)
   out <- nx_df
 
-  # clade / subclade
+  # clade/subclade
   if (!("clade" %in% names(out))) {
-    cc <- intersect(nms, c("Clade"))
+    cc <- intersect(names(out), c("Clade"))
     if (length(cc) >= 1) out <- out %>% rename(clade = all_of(cc[[1]]))
   }
-  sc <- intersect(names(out), c("subclade", "Subclade"))
-  if (!("subclade" %in% names(out)) && length(sc) >= 1) out <- out %>% rename(subclade = all_of(sc[[1]]))
+  if (!("subclade" %in% names(out))) {
+    sc <- intersect(names(out), c("Subclade"))
+    if (length(sc) >= 1) out <- out %>% rename(subclade = all_of(sc[[1]]))
+  }
 
   # qc
   qc_status_col <- intersect(names(out), c("qc.overallStatus", "qc_overallStatus", "overallStatus"))
-  if (length(qc_status_col) >= 1) out <- out %>% rename(qc_status = all_of(qc_status_col[[1]]))
+  if (length(qc_status_col) >= 1 && !("qc_status" %in% names(out))) out <- out %>% rename(qc_status = all_of(qc_status_col[[1]]))
+
   qc_score_col <- intersect(names(out), c("qc.overallScore", "qc_overallScore", "overallScore"))
-  if (length(qc_score_col) >= 1) out <- out %>% rename(qc_score = all_of(qc_score_col[[1]]))
+  if (length(qc_score_col) >= 1 && !("qc_score" %in% names(out))) out <- out %>% rename(qc_score = all_of(qc_score_col[[1]]))
 
   keep_cols <- intersect(names(out), c("sample_id", "clade", "subclade", "qc_status", "qc_score"))
   if (length(keep_cols) >= 2) out <- out %>% select(all_of(keep_cols))
@@ -183,8 +198,8 @@ extract_nextclade <- function(nx_df) {
 extract_subtyping <- function(sub_df) {
   if (is.null(sub_df)) return(NULL)
   sub_df <- standardize_sample_id(sub_df) %>% mutate(sample_id = normalize_id(sample_id))
-  nms <- names(sub_df)
   out <- sub_df
+  nms <- names(out)
 
   type_col <- intersect(nms, c("influenza_type", "type", "virus_type", "InfluenzaType"))
   sub_col  <- intersect(nms, c("subtype", "subtype_prediction", "prediction", "Subtype"))
@@ -207,7 +222,7 @@ extract_subtyping <- function(sub_df) {
   out
 }
 
-# FAST scan: list runs WITHOUT reading per-run tables
+# FAST run listing (no per-run file reads besides file_exists)
 list_runs_fast <- function() {
   if (!dir_exists(DATA_ROOT)) return(tibble())
   run_dirs <- dir_ls(DATA_ROOT, type = "directory", recurse = FALSE)
@@ -237,7 +252,7 @@ list_runs_fast <- function() {
     status <- if (has_nextclade && has_subtyping) "done" else "partial"
 
     ss_path <- find_samplesheet_path(pipeline_dir, results_dir)
-    has_ss <- !is.na(ss_path) && file_exists(ss_path)
+    has_ss <- (!is.na(ss_path) && file_exists(ss_path))
 
     multiqc_path <- path(results_dir, "MultiQC", "multiqc_report.html")
     mq_url <- if (file_exists(multiqc_path)) path_to_url(multiqc_path) else NULL
@@ -270,19 +285,15 @@ ui <- fluidPage(
       fluidRow(
         column(
           6,
-          checkboxInput(
-            "include_empty_runs",
-            label = "Include runs without any samples (missing/empty samplesheet)",
-            value = FALSE
-          )
+          checkboxInput("include_empty_runs",
+                        "Include runs without any samples (missing/empty samplesheet)",
+                        value = FALSE)
         ),
         column(
           6,
-          checkboxInput(
-            "include_no_pass_runs",
-            label = "Include runs without any quality-passed samples (applies only after selecting a run)",
-            value = FALSE
-          )
+          checkboxInput("include_no_pass_runs",
+                        "Include runs without any quality-passed samples (applies after selecting a run)",
+                        value = FALSE)
         )
       ),
       DTOutput("runs_tbl"),
@@ -303,20 +314,15 @@ server <- function(input, output, session) {
   runs_r <- reactiveVal(tibble())
 
   refresh_runs <- function() {
-    # Never crash the whole app because of one bad directory
     out <- tryCatch(list_runs_fast(), error = function(e) {
-      message("[nf-flu shiny] list_runs_fast error: ", conditionMessage(e))
+      dbg("list_runs_fast error: ", conditionMessage(e))
       tibble()
     })
     runs_r(out)
   }
 
-  # Initial load
-  observeEvent(TRUE, {
-    refresh_runs()
-  }, once = TRUE)
+  observeEvent(TRUE, { refresh_runs() }, once = TRUE)
 
-  # Periodic refresh
   observe({
     invalidateLater(REFRESH_MS, session)
     refresh_runs()
@@ -334,15 +340,15 @@ server <- function(input, output, session) {
 
   output$runs_tbl <- renderDT({
     runs <- filtered_runs()
-    validate(need(nrow(runs) > 0, "No runs found (or none match the current filters)."))
+    validate(need(nrow(runs) > 0, "No runs found (or none match filters)."))
 
     disp <- runs %>%
       transmute(
         ` ` = case_when(
-          !has_samplesheet ~ "\U0001F6D1",          # 🛑 (samplesheet missing)
-          status == "done" ~ "\U0001F7E2",          # 🟢
-          status == "partial" ~ "\U0001F7E1",       # 🟡
-          status == "no_results" ~ "\U000026AA",    # ⚪
+          !has_samplesheet ~ "\U0001F6D1",        # 🛑
+          status == "done" ~ "\U0001F7E2",        # 🟢
+          status == "partial" ~ "\U0001F7E1",     # 🟡
+          status == "no_results" ~ "\U000026AA",  # ⚪
           TRUE ~ "\U0001F534"
         ),
         Run = run,
@@ -378,72 +384,38 @@ server <- function(input, output, session) {
     runs[idx, , drop = FALSE]
   })
 
-  # Run header + per-run metrics computed lazily
   output$run_header <- renderUI({
     sr <- selected_run()
     if (is.null(sr)) return(NULL)
 
-    results_dir <- sr$results_dir[[1]]
-    pipeline_dir <- sr$pipeline_dir[[1]]
+    run_name <- scalar_chr(sr$run)
+    results_dir <- scalar_chr(sr$results_dir)
+    pipeline_dir <- scalar_chr(sr$pipeline_dir)
+    has_ss <- scalar_lgl(sr$has_samplesheet)
 
-    mq <- if (!is.na(sr$multiqc_url)) {
-      tags$a(href = sr$multiqc_url, target = "_blank", "Open MultiQC report")
-    } else if (!is.na(sr$multiqc_path)) {
-      tags$span("MultiQC (local path): ", tags$code(sr$multiqc_path))
+    dbg("Selected run: ", run_name)
+    dbg("  results_dir=", results_dir)
+    dbg("  pipeline_dir=", pipeline_dir)
+    dbg("  has_samplesheet=", has_ss)
+
+    mq <- if (!is.na(scalar_chr(sr$multiqc_url)) && scalar_chr(sr$multiqc_url) != "") {
+      tags$a(href = scalar_chr(sr$multiqc_url), target = "_blank", "Open MultiQC report")
+    } else if (!is.na(scalar_chr(sr$multiqc_path)) && scalar_chr(sr$multiqc_path) != "") {
+      tags$span("MultiQC (local path): ", tags$code(scalar_chr(sr$multiqc_path)))
     } else {
       tags$span("MultiQC: —")
     }
 
-    # Compute metrics for this run only
-    met <- tryCatch({
-      ss_path <- find_samplesheet_path(pipeline_dir, results_dir)
-      ss <- read_samplesheet(ss_path)
-      ss_n <- if (!is.null(ss)) nrow(ss) else 0L
-
-      rc <- extract_readcount(read_pass_readcount_raw(results_dir)) %||% empty_rc()
-      passed_n <- if (!is.null(ss)) {
-        rc %>% filter(sample_id %in% ss$sample_id, !is.na(read_count), read_count > 0) %>%
-          summarise(n = n()) %>% pull(n) %||% 0L
-      } else 0L
-
-      nx  <- extract_nextclade(read_nextclade(results_dir)) %||% empty_nx()
-      sub <- extract_subtyping(read_subtyping(results_dir)) %||% empty_sub()
-
-      missing_nx <- if (!is.null(ss)) sum(!(ss$sample_id %in% nx$sample_id)) else NA_integer_
-      missing_sub <- if (!is.null(ss)) sum(!(ss$sample_id %in% sub$sample_id)) else NA_integer_
-
-      list(ss_path = ss_path, ss_n = ss_n, passed_n = as.integer(passed_n),
-           missing_nx = missing_nx, missing_sub = missing_sub)
-    }, error = function(e) {
-      message("[nf-flu shiny] run metrics error: ", conditionMessage(e))
-      list(ss_path = NA_character_, ss_n = NA_integer_, passed_n = NA_integer_,
-           missing_nx = NA_integer_, missing_sub = NA_integer_)
-    })
-
-    warn <- NULL
-    if (!isTRUE(sr$has_samplesheet)) {
-      warn <- tags$p(tags$span(style = "color:#a94442; font-weight:700;",
-                               "ERROR: Missing/empty samplesheet (cannot build sample table)."))
-    }
-
-    # Note about include_no_pass_runs (since it's lazy)
-    note <- tags$p(style="color:#666; font-size:12px;",
-                   "Note: the “include runs without passed samples” filter is evaluated on the sample table (after selecting a run), not on the runs table (for performance/stability).")
+    ss_path <- find_samplesheet_path(pipeline_dir, results_dir)
 
     tags$div(
-      h3(paste0("Run: ", sr$run)),
-      tags$p(
-        tags$b("Status: "), sr$status,
-        " | ", tags$b("Samples (samplesheet): "), met$ss_n %||% "—",
-        " | ", tags$b("Passed (read_count): "), met$passed_n %||% "—",
-        " | ", tags$b("Missing nextclade: "), met$missing_nx %||% "—",
-        " | ", tags$b("Missing subtyping: "), met$missing_sub %||% "—"
-      ),
-      warn,
+      h3(paste0("Run: ", run_name)),
+      tags$p(tags$b("Status: "), scalar_chr(sr$status)),
       tags$p(mq),
-      tags$p("Samplesheet: ", tags$code(met$ss_path %||% "—")),
-      tags$p(tags$small(tags$code(sr$results_dir))),
-      note
+      tags$p("Samplesheet: ", tags$code(ss_path %||% "—")),
+      if (!has_ss) tags$p(tags$span(style="color:#a94442; font-weight:700;",
+                                    "ERROR: Missing/empty samplesheet (cannot build sample table).")) else NULL,
+      tags$p(tags$small(tags$code(results_dir)))
     )
   })
 
@@ -452,19 +424,41 @@ server <- function(input, output, session) {
     validate(need(!is.null(sr), "Select a run above."))
 
     tryCatch({
-      results_dir <- sr$results_dir[[1]]
-      pipeline_dir <- sr$pipeline_dir[[1]]
+      run_name <- scalar_chr(sr$run)
+      results_dir <- scalar_chr(sr$results_dir)
+      pipeline_dir <- scalar_chr(sr$pipeline_dir)
 
-      validate(need(!is.na(results_dir) && dir_exists(results_dir), "Run has no readable results directory."))
+      dbg("samples_tbl start for run ", run_name)
+      dbg("  results_dir=", results_dir)
+      dbg("  pipeline_dir=", pipeline_dir)
+
+      validate(need(!is.na(results_dir) && nzchar(results_dir) && dir_exists(results_dir),
+                    "Run has no readable results directory."))
 
       ss_path <- find_samplesheet_path(pipeline_dir, results_dir)
+      dbg("  samplesheet_path=", ss_path)
+
       ss <- read_samplesheet(ss_path)
+      dbg("  samplesheet rows=", if (is.null(ss)) "NULL" else nrow(ss))
+
       validate(need(!is.null(ss) && nrow(ss) > 0, "No readable samplesheet for this run."))
 
-      rc  <- extract_readcount(read_pass_readcount_raw(results_dir)) %||% empty_rc()
-      sub <- extract_subtyping(read_subtyping(results_dir)) %||% empty_sub()
-      nx  <- extract_nextclade(read_nextclade(results_dir)) %||% empty_nx()
+      rc_raw <- read_pass_readcount_raw(results_dir)
+      dbg("  readcount raw=", if (is.null(rc_raw)) "NULL" else paste0("ncol=", ncol(rc_raw), " nrow=", nrow(rc_raw)))
+      rc <- extract_readcount(rc_raw) %||% empty_rc()
+      dbg("  readcount parsed rows=", nrow(rc))
 
+      sub_raw <- read_subtyping_raw(results_dir)
+      dbg("  subtyping raw=", if (is.null(sub_raw)) "NULL" else paste0("ncol=", ncol(sub_raw), " nrow=", nrow(sub_raw)))
+      sub <- extract_subtyping(sub_raw) %||% empty_sub()
+      dbg("  subtyping parsed rows=", nrow(sub))
+
+      nx_raw <- read_nextclade_raw(results_dir)
+      dbg("  nextclade raw=", if (is.null(nx_raw)) "NULL" else paste0("ncol=", ncol(nx_raw), " nrow=", nrow(nx_raw)))
+      nx <- extract_nextclade(nx_raw) %||% empty_nx()
+      dbg("  nextclade parsed rows=", nrow(nx))
+
+      # joins are safe because rc/sub/nx are NEVER NULL
       df <- ss %>%
         select(sample_id) %>%
         left_join(rc,  by = "sample_id") %>%
@@ -477,10 +471,12 @@ server <- function(input, output, session) {
           passed_reads = !is.na(read_count) & read_count > 0
         )
 
-      # Apply include_no_pass_runs *here* (lazy)
+      dbg("  joined df rows=", nrow(df), " cols=", ncol(df))
+
+      # apply "include_no_pass_runs" lazily and safely (scalar condition!)
       if (!isTRUE(input$include_no_pass_runs)) {
-        # If read_count exists, require at least one passed sample to show table; otherwise show anyway.
-        if ("read_count" %in% names(df)) {
+        # only enforce if read_count exists and df has rows
+        if (nrow(df) > 0 && "passed_reads" %in% names(df)) {
           validate(need(any(df$passed_reads, na.rm = TRUE),
                         "This run has zero passed samples (per read_count). Enable the checkbox to include it."))
         }
@@ -493,11 +489,11 @@ server <- function(input, output, session) {
           "clade", "subclade", "qc_status", "qc_score",
           "has_reads", "has_subtyping", "has_nextclade")
       )
+
       disp <- df %>% select(all_of(show_cols))
 
       dt <- datatable(disp, options = list(pageLength = 25, autoWidth = TRUE), rownames = FALSE)
 
-      # styling
       for (col in c("has_reads", "has_subtyping", "has_nextclade")) {
         if (col %in% names(disp)) {
           dt <- dt %>% formatStyle(
@@ -538,7 +534,7 @@ server <- function(input, output, session) {
       dt
 
     }, error = function(e) {
-      message("[nf-flu shiny] samples_tbl error: ", conditionMessage(e))
+      dbg("samples_tbl ERROR: ", conditionMessage(e))
       datatable(
         data.frame(
           Message = c(
