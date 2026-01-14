@@ -1,9 +1,5 @@
-# app.R (HARDENED + VERY VERBOSE)
-# - Fixes: 'length = ...' in coercion to 'logical(1)'
-# - Forces scalar extraction from selected run row
-# - Empty-tibble fallbacks for optional files
-# - Lazy metrics: runs table is fast; sample table computed only for selected run
-# - App author: Emanuel Heitlinger
+# app.R (FIXED NULL-COALESCE + VERY VERBOSE)
+# App author: Emanuel Heitlinger
 
 library(shiny)
 library(dplyr)
@@ -27,7 +23,16 @@ REFRESH_MS <- as.integer(Sys.getenv("NF_FLU_REFRESH_MS", unset = "120000")) # 2 
 
 # ---------------- helpers ----------------
 
-`%||%` <- function(a, b) if (!is.null(a) && !is.na(a) && a != "") a else b
+# NULL-coalescer: SAFE FOR TIBBLES (only checks is.null)
+`%||%` <- function(a, b) if (is.null(a)) b else a
+
+# scalar-string coalescer: for character paths/urls
+`%||str%` <- function(a, b) {
+  if (is.null(a) || length(a) < 1) return(b)
+  x <- as.character(a[[1]])
+  if (is.na(x) || x == "") b else x
+}
+
 rtrim_slash <- function(x) sub("/+$", "", x)
 
 scalar_chr <- function(x) {
@@ -173,7 +178,6 @@ extract_nextclade <- function(nx_df) {
   nx_df <- standardize_sample_id(nx_df) %>% mutate(sample_id = normalize_id(sample_id))
   out <- nx_df
 
-  # clade/subclade
   if (!("clade" %in% names(out))) {
     cc <- intersect(names(out), c("Clade"))
     if (length(cc) >= 1) out <- out %>% rename(clade = all_of(cc[[1]]))
@@ -183,7 +187,6 @@ extract_nextclade <- function(nx_df) {
     if (length(sc) >= 1) out <- out %>% rename(subclade = all_of(sc[[1]]))
   }
 
-  # qc
   qc_status_col <- intersect(names(out), c("qc.overallStatus", "qc_overallStatus", "overallStatus"))
   if (length(qc_status_col) >= 1 && !("qc_status" %in% names(out))) out <- out %>% rename(qc_status = all_of(qc_status_col[[1]]))
 
@@ -222,7 +225,7 @@ extract_subtyping <- function(sub_df) {
   out
 }
 
-# FAST run listing (no per-run file reads besides file_exists)
+# FAST run listing
 list_runs_fast <- function() {
   if (!dir_exists(DATA_ROOT)) return(tibble())
   run_dirs <- dir_ls(DATA_ROOT, type = "directory", recurse = FALSE)
@@ -265,9 +268,9 @@ list_runs_fast <- function() {
       results_dir = results_dir,
       updated = resolved$mtime,
       has_samplesheet = has_ss,
-      samplesheet_path = ss_path %||% NA_character_,
+      samplesheet_path = ss_path,
       multiqc_path = if (file_exists(multiqc_path)) multiqc_path else NA_character_,
-      multiqc_url = mq_url %||% NA_character_
+      multiqc_url = mq_url
     )
   })
 
@@ -283,26 +286,17 @@ ui <- fluidPage(
       12,
       h3("Runs"),
       fluidRow(
-        column(
-          6,
-          checkboxInput("include_empty_runs",
-                        "Include runs without any samples (missing/empty samplesheet)",
-                        value = FALSE)
-        ),
-        column(
-          6,
-          checkboxInput("include_no_pass_runs",
-                        "Include runs without any quality-passed samples (applies after selecting a run)",
-                        value = FALSE)
-        )
+        column(6, checkboxInput("include_empty_runs",
+                                "Include runs without any samples (missing/empty samplesheet)", FALSE)),
+        column(6, checkboxInput("include_no_pass_runs",
+                                "Include runs without any quality-passed samples (applies after selecting a run)", FALSE))
       ),
       DTOutput("runs_tbl"),
       hr(),
       uiOutput("run_header"),
       DTOutput("samples_tbl"),
       hr(),
-      tags$div(style = "color:#666; font-size:12px;",
-               "App author: Emanuel Heitlinger")
+      tags$div(style = "color:#666; font-size:12px;", "App author: Emanuel Heitlinger")
     )
   )
 )
@@ -331,10 +325,7 @@ server <- function(input, output, session) {
   filtered_runs <- reactive({
     runs <- runs_r()
     if (nrow(runs) == 0) return(runs)
-
-    if (!isTRUE(input$include_empty_runs)) {
-      runs <- runs %>% filter(has_samplesheet)
-    }
+    if (!isTRUE(input$include_empty_runs)) runs <- runs %>% filter(has_samplesheet)
     runs
   })
 
@@ -361,20 +352,8 @@ server <- function(input, output, session) {
         )
       )
 
-    datatable(
-      disp,
-      escape = FALSE,
-      selection = "single",
-      options = list(pageLength = 20, autoWidth = TRUE)
-    ) %>%
-      formatStyle(
-        "Status",
-        backgroundColor = styleEqual(
-          c("done", "partial", "no_results"),
-          c("#dff0d8", "#fcf8e3", "#eeeeee")
-        ),
-        fontWeight = "bold"
-      )
+    datatable(disp, escape = FALSE, selection = "single",
+              options = list(pageLength = 20, autoWidth = TRUE))
   })
 
   selected_run <- reactive({
@@ -398,21 +377,24 @@ server <- function(input, output, session) {
     dbg("  pipeline_dir=", pipeline_dir)
     dbg("  has_samplesheet=", has_ss)
 
-    mq <- if (!is.na(scalar_chr(sr$multiqc_url)) && scalar_chr(sr$multiqc_url) != "") {
-      tags$a(href = scalar_chr(sr$multiqc_url), target = "_blank", "Open MultiQC report")
-    } else if (!is.na(scalar_chr(sr$multiqc_path)) && scalar_chr(sr$multiqc_path) != "") {
-      tags$span("MultiQC (local path): ", tags$code(scalar_chr(sr$multiqc_path)))
+    ss_path <- find_samplesheet_path(pipeline_dir, results_dir)
+
+    mq_url <- scalar_chr(sr$multiqc_url)
+    mq_path <- scalar_chr(sr$multiqc_path)
+
+    mq <- if (!is.na(mq_url) && mq_url != "") {
+      tags$a(href = mq_url, target = "_blank", "Open MultiQC report")
+    } else if (!is.na(mq_path) && mq_path != "") {
+      tags$span("MultiQC (local path): ", tags$code(mq_path))
     } else {
       tags$span("MultiQC: —")
     }
-
-    ss_path <- find_samplesheet_path(pipeline_dir, results_dir)
 
     tags$div(
       h3(paste0("Run: ", run_name)),
       tags$p(tags$b("Status: "), scalar_chr(sr$status)),
       tags$p(mq),
-      tags$p("Samplesheet: ", tags$code(ss_path %||% "—")),
+      tags$p("Samplesheet: ", tags$code(ss_path %||str% "—")),
       if (!has_ss) tags$p(tags$span(style="color:#a94442; font-weight:700;",
                                     "ERROR: Missing/empty samplesheet (cannot build sample table).")) else NULL,
       tags$p(tags$small(tags$code(results_dir)))
@@ -429,8 +411,6 @@ server <- function(input, output, session) {
       pipeline_dir <- scalar_chr(sr$pipeline_dir)
 
       dbg("samples_tbl start for run ", run_name)
-      dbg("  results_dir=", results_dir)
-      dbg("  pipeline_dir=", pipeline_dir)
 
       validate(need(!is.na(results_dir) && nzchar(results_dir) && dir_exists(results_dir),
                     "Run has no readable results directory."))
@@ -440,25 +420,26 @@ server <- function(input, output, session) {
 
       ss <- read_samplesheet(ss_path)
       dbg("  samplesheet rows=", if (is.null(ss)) "NULL" else nrow(ss))
-
       validate(need(!is.null(ss) && nrow(ss) > 0, "No readable samplesheet for this run."))
 
       rc_raw <- read_pass_readcount_raw(results_dir)
       dbg("  readcount raw=", if (is.null(rc_raw)) "NULL" else paste0("ncol=", ncol(rc_raw), " nrow=", nrow(rc_raw)))
-      rc <- extract_readcount(rc_raw) %||% empty_rc()
+      rc <- extract_readcount(rc_raw)
+      rc <- rc %||% empty_rc()
       dbg("  readcount parsed rows=", nrow(rc))
 
       sub_raw <- read_subtyping_raw(results_dir)
       dbg("  subtyping raw=", if (is.null(sub_raw)) "NULL" else paste0("ncol=", ncol(sub_raw), " nrow=", nrow(sub_raw)))
-      sub <- extract_subtyping(sub_raw) %||% empty_sub()
+      sub <- extract_subtyping(sub_raw)
+      sub <- sub %||% empty_sub()
       dbg("  subtyping parsed rows=", nrow(sub))
 
       nx_raw <- read_nextclade_raw(results_dir)
       dbg("  nextclade raw=", if (is.null(nx_raw)) "NULL" else paste0("ncol=", ncol(nx_raw), " nrow=", nrow(nx_raw)))
-      nx <- extract_nextclade(nx_raw) %||% empty_nx()
+      nx <- extract_nextclade(nx_raw)
+      nx <- nx %||% empty_nx()
       dbg("  nextclade parsed rows=", nrow(nx))
 
-      # joins are safe because rc/sub/nx are NEVER NULL
       df <- ss %>%
         select(sample_id) %>%
         left_join(rc,  by = "sample_id") %>%
@@ -473,13 +454,9 @@ server <- function(input, output, session) {
 
       dbg("  joined df rows=", nrow(df), " cols=", ncol(df))
 
-      # apply "include_no_pass_runs" lazily and safely (scalar condition!)
-      if (!isTRUE(input$include_no_pass_runs)) {
-        # only enforce if read_count exists and df has rows
-        if (nrow(df) > 0 && "passed_reads" %in% names(df)) {
-          validate(need(any(df$passed_reads, na.rm = TRUE),
-                        "This run has zero passed samples (per read_count). Enable the checkbox to include it."))
-        }
+      if (!isTRUE(input$include_no_pass_runs) && "passed_reads" %in% names(df)) {
+        validate(need(any(df$passed_reads, na.rm = TRUE),
+                      "This run has zero passed samples (per read_count). Enable the checkbox to include it."))
       }
 
       show_cols <- intersect(
@@ -489,27 +466,22 @@ server <- function(input, output, session) {
           "clade", "subclade", "qc_status", "qc_score",
           "has_reads", "has_subtyping", "has_nextclade")
       )
-
       disp <- df %>% select(all_of(show_cols))
 
       dt <- datatable(disp, options = list(pageLength = 25, autoWidth = TRUE), rownames = FALSE)
 
       for (col in c("has_reads", "has_subtyping", "has_nextclade")) {
         if (col %in% names(disp)) {
-          dt <- dt %>% formatStyle(
-            col,
-            backgroundColor = styleEqual(c(TRUE, FALSE), c("#dff0d8", "#fcf8e3")),
-            fontWeight = "bold"
-          )
+          dt <- dt %>% formatStyle(col,
+                                   backgroundColor = styleEqual(c(TRUE, FALSE), c("#dff0d8", "#fcf8e3")),
+                                   fontWeight = "bold")
         }
       }
 
       if ("passed_reads" %in% names(disp)) {
-        dt <- dt %>% formatStyle(
-          "passed_reads",
-          backgroundColor = styleEqual(c(TRUE, FALSE), c("#dff0d8", "#f2dede")),
-          fontWeight = "bold"
-        )
+        dt <- dt %>% formatStyle("passed_reads",
+                                 backgroundColor = styleEqual(c(TRUE, FALSE), c("#dff0d8", "#f2dede")),
+                                 fontWeight = "bold")
       }
 
       if ("qc_status" %in% names(disp)) {
@@ -520,14 +492,6 @@ server <- function(input, output, session) {
             c("#dff0d8", "#fcf8e3", "#f2dede", "#f2dede", "#fcf8e3", "#eeeeee")
           ),
           fontWeight = "bold"
-        )
-      }
-
-      if ("H" %in% names(disp)) {
-        dt <- dt %>% formatStyle(
-          "H",
-          backgroundColor = styleEqual(c("H5", "H7"), c("#f2dede", "#f2dede")),
-          fontWeight = styleEqual(c("H5", "H7"), c("bold", "bold"))
         )
       }
 
