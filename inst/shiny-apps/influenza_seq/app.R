@@ -1,13 +1,11 @@
 # app.R
-# NF_FLU Influenza Dashboard (filesystem-based)
-# - Runs table + selected run details below (no tabs)
-# - Samplesheet is authoritative for sample counting & listing
-# - "Passed samples" primarily from read_count/pass_read_count_samples_mqc.tsv
-# - Integrity checks: samplesheet vs nextclade/subtyping/merged-fastq
+# NF_FLU Influenza Dashboard
 #
-# Tested assumptions based on your data:
-# - samplesheet.csv header: sample,fastq_1,fastq_2
-# - read_count file: results/read_count/pass_read_count_samples_mqc.tsv with Sample + Read count
+# Philosophy:
+# - Samplesheet is authoritative for "what samples exist".
+# - Missing outputs are expected (e.g., no influenza / failed analysis) and not an error.
+# - "Passed" primarily derived from pass_read_count_samples_mqc.tsv.
+# - App should never crash on a single weird run -> tryCatch + validate.
 
 library(shiny)
 library(dplyr)
@@ -19,16 +17,13 @@ library(fs)
 
 # ---------------- CONFIG ----------------
 
-# For testing: use backup root
-# (Production later: /data/NF/NF_FLU)
+# Testing root (as requested)
 DATA_ROOT <- Sys.getenv("NF_FLU_DATA_ROOT", unset = "/data/NF/backup_NF_FLU_backup")
-# DATA_ROOT <- Sys.getenv("NF_FLU_DATA_ROOT", unset = "/data/NF/NF_FLU")  # production
+# Production later:
+# DATA_ROOT <- Sys.getenv("NF_FLU_DATA_ROOT", unset = "/data/NF/NF_FLU")
 
 BASE_URL <- Sys.getenv("NF_FLU_BASE_URL", unset = "")
 if (BASE_URL == "") BASE_URL <- NULL
-
-# Influenza samples (matches your usage: starts with 326)
-SAMPLE_ID_REGEX <- Sys.getenv("NF_FLU_SAMPLE_ID_REGEX", unset = "^326")
 
 REFRESH_MS <- as.integer(Sys.getenv("NF_FLU_REFRESH_MS", unset = "60000"))
 
@@ -44,8 +39,7 @@ path_to_url <- function(fs_path) {
   paste0(rtrim_slash(BASE_URL), "/", rel)
 }
 
-# Resolve results/ directory for a run.
-# Supports:
+# Resolve results/ dir for a run: supports
 #  A) <RUN>/<PIPELINE_RUN>/results
 #  B) <RUN>/results
 resolve_results_dir <- function(run_dir) {
@@ -81,7 +75,6 @@ resolve_results_dir <- function(run_dir) {
   )
 }
 
-# Find samplesheet path (supports both your backup structure and generated one)
 find_samplesheet_path <- function(pipeline_dir, results_dir) {
   candidates <- c(
     path(pipeline_dir, "samplesheet.csv"),
@@ -94,31 +87,17 @@ find_samplesheet_path <- function(pipeline_dir, results_dir) {
   hit
 }
 
-# Read samplesheet: EXPECTS a column named 'sample'
-# Returns tibble(sample_id, fastq_1, fastq_2, ...)
 read_samplesheet <- function(samplesheet_path) {
   if (is.na(samplesheet_path) || !file_exists(samplesheet_path)) return(NULL)
-
   ss <- suppressWarnings(read_csv(samplesheet_path, show_col_types = FALSE))
-  if (!("sample" %in% names(ss))) {
-    # fallback: try common names
-    nms <- names(ss)
-    cand <- intersect(nms, c("sample_id", "Sample", "SampleID", "id"))
-    if (length(cand) >= 1) {
-      ss <- ss %>% rename(sample = all_of(cand[[1]]))
-    } else {
-      return(NULL)
-    }
-  }
 
-  ss %>% rename(sample_id = sample) %>% mutate(sample_id = as.character(sample_id))
-}
+  # Your samplesheet has: sample,fastq_1,fastq_2
+  if (!("sample" %in% names(ss))) return(NULL)
 
-# nf-flu outputs
-read_subtyping <- function(results_dir) {
-  f <- path(results_dir, "subtyping_report", "subtype_results.csv")
-  if (!file_exists(f)) return(NULL)
-  suppressWarnings(read_csv(f, show_col_types = FALSE))
+  ss %>%
+    rename(sample_id = sample) %>%
+    mutate(sample_id = as.character(sample_id)) %>%
+    distinct(sample_id, .keep_all = TRUE)
 }
 
 read_nextclade <- function(results_dir) {
@@ -127,46 +106,10 @@ read_nextclade <- function(results_dir) {
   suppressWarnings(read_tsv(f, show_col_types = FALSE))
 }
 
-# Read pass read-count table (authoritative "passed samples" list)
-# Expected path: results/read_count/pass_read_count_samples_mqc.tsv
-read_pass_readcount <- function(results_dir) {
-  f <- path(results_dir, "read_count", "pass_read_count_samples_mqc.tsv")
+read_subtyping <- function(results_dir) {
+  f <- path(results_dir, "subtyping_report", "subtype_results.csv")
   if (!file_exists(f)) return(NULL)
-
-  # It's typically tab-delimited, but sometimes looks space-aligned.
-  # We'll try read_tsv first; if we don't get 2 columns, fallback to whitespace.
-  rc <- suppressWarnings(read_tsv(f, show_col_types = FALSE))
-  if (ncol(rc) < 2) {
-    rc <- suppressWarnings(read_delim(f, delim = "\\s+", show_col_types = FALSE, trim_ws = TRUE))
-  }
-
-  # normalize column names
-  nms <- names(rc)
-  # likely: "Sample" and "Read count" (or "Read.count")
-  sample_col <- intersect(nms, c("Sample", "sample", "SAMPLE"))
-  read_col <- intersect(nms, c("Read count", "Read_count", "Read.count", "read_count", "ReadCount"))
-
-  if (length(sample_col) == 0) {
-    # fallback: first column
-    sample_col <- nms[1]
-  } else {
-    sample_col <- sample_col[1]
-  }
-
-  if (length(read_col) == 0) {
-    # fallback: second column
-    read_col <- nms[min(2, length(nms))]
-  } else {
-    read_col <- read_col[1]
-  }
-
-  rc %>%
-    transmute(
-      sample_id = as.character(.data[[sample_col]]),
-      read_count = suppressWarnings(as.numeric(.data[[read_col]]))
-    ) %>%
-    filter(!is.na(sample_id) & sample_id != "") %>%
-    distinct(sample_id, .keep_all = TRUE)
+  suppressWarnings(read_csv(f, show_col_types = FALSE))
 }
 
 standardize_sample_id <- function(df) {
@@ -178,40 +121,10 @@ standardize_sample_id <- function(df) {
   df %>% mutate(sample_id = as.character(sample_id))
 }
 
-# Normalize IDs from outputs if something accidentally appends _1/_2
-# Safe for your FLI-1 examples because those end with "-1", not "_1"
+# Safe normalization: strip trailing _1/_2 ONLY (not -1 etc)
 normalize_id <- function(x) {
   x <- as.character(x)
   str_replace(x, "_[12]$", "")
-}
-
-extract_HN <- function(sub_df) {
-  if (is.null(sub_df)) return(NULL)
-  sub_df <- standardize_sample_id(sub_df) %>% mutate(sample_id = normalize_id(sample_id))
-  nms <- names(sub_df)
-
-  type_col <- intersect(nms, c("influenza_type", "type", "virus_type", "InfluenzaType"))
-  sub_col  <- intersect(nms, c("subtype", "subtype_prediction", "prediction", "Subtype"))
-
-  out <- sub_df
-  if (length(type_col) >= 1) out <- out %>% rename(influenza_type = all_of(type_col[[1]]))
-  if (length(sub_col)  >= 1) out <- out %>% rename(subtype = all_of(sub_col[[1]]))
-
-  h_col <- intersect(nms, c("H", "H_subtype", "HA", "ha_subtype", "H_type"))
-  n_col <- intersect(nms, c("N", "N_subtype", "NA", "na_subtype", "N_type"))
-  if (length(h_col) >= 1) out <- out %>% rename(H = all_of(h_col[[1]]))
-  if (length(n_col) >= 1) out <- out %>% rename(N = all_of(n_col[[1]]))
-
-  if (!("H" %in% names(out)) || !("N" %in% names(out))) {
-    if ("subtype" %in% names(out)) {
-      st <- as.character(out$subtype)
-      if (!("H" %in% names(out))) out$H <- str_extract(st, "H\\d+")
-      if (!("N" %in% names(out))) out$N <- str_extract(st, "N\\d+")
-      if (!("influenza_type" %in% names(out))) out$influenza_type <- str_extract(st, "^[AB]")
-    }
-  }
-
-  out
 }
 
 extract_nextclade <- function(nx_df) {
@@ -220,203 +133,179 @@ extract_nextclade <- function(nx_df) {
   nms <- names(nx_df)
 
   out <- nx_df
+  if ("clade" %in% nms) {
+    # ok
+  } else {
+    clade_col <- intersect(nms, c("Clade"))
+    if (length(clade_col) >= 1) out <- out %>% rename(clade = all_of(clade_col[[1]]))
+  }
 
-  clade_col <- intersect(nms, c("clade", "Clade"))
-  subcl_col  <- intersect(nms, c("subclade", "Subclade"))
-  if (length(clade_col) >= 1) out <- out %>% rename(clade = all_of(clade_col[[1]]))
-  if (length(subcl_col)  >= 1) out <- out %>% rename(subclade = all_of(subcl_col[[1]]))
+  subcl_col <- intersect(nms, c("subclade", "Subclade"))
+  if (length(subcl_col) >= 1 && !("subclade" %in% names(out))) out <- out %>% rename(subclade = all_of(subcl_col[[1]]))
 
   qc_status_col <- intersect(nms, c("qc.overallStatus", "qc_overallStatus", "overallStatus"))
-  qc_score_col  <- intersect(nms, c("qc.overallScore", "qc_overallScore", "overallScore"))
   if (length(qc_status_col) >= 1) out <- out %>% rename(qc_status = all_of(qc_status_col[[1]]))
-  if (length(qc_score_col)  >= 1) out <- out %>% rename(qc_score = all_of(qc_score_col[[1]]))
+
+  qc_score_col <- intersect(nms, c("qc.overallScore", "qc_overallScore", "overallScore"))
+  if (length(qc_score_col) >= 1) out <- out %>% rename(qc_score = all_of(qc_score_col[[1]]))
 
   keep_cols <- intersect(names(out), c("sample_id", "clade", "subclade", "qc_status", "qc_score"))
   if (length(keep_cols) >= 2) out <- out %>% select(all_of(keep_cols))
   out
 }
 
-# Infer sample IDs from merged fastq names in results/fastq/
-infer_samples_from_merged_fastq <- function(results_dir) {
-  fastq_dir <- path(results_dir, "fastq")
-  if (!dir_exists(fastq_dir)) return(character(0))
+extract_subtyping <- function(sub_df) {
+  if (is.null(sub_df)) return(NULL)
+  sub_df <- standardize_sample_id(sub_df) %>% mutate(sample_id = normalize_id(sample_id))
+  nms <- names(sub_df)
 
-  files <- dir_ls(fastq_dir, type = "file", glob = "*.merged.fastq.gz")
-  if (length(files) == 0) return(character(0))
+  out <- sub_df
 
-  bases <- path_file(files)
-  samp <- str_match(bases, "^(.*)_[12]\\.merged\\.fastq\\.gz$")[, 2]
-  samp <- samp[!is.na(samp)]
-  unique(samp)
+  # common fields
+  type_col <- intersect(nms, c("influenza_type", "type", "virus_type", "InfluenzaType"))
+  sub_col  <- intersect(nms, c("subtype", "subtype_prediction", "prediction", "Subtype"))
+  if (length(type_col) >= 1 && !("influenza_type" %in% names(out))) out <- out %>% rename(influenza_type = all_of(type_col[[1]]))
+  if (length(sub_col)  >= 1 && !("subtype" %in% names(out))) out <- out %>% rename(subtype = all_of(sub_col[[1]]))
+
+  h_col <- intersect(nms, c("H", "H_subtype", "HA", "ha_subtype", "H_type"))
+  n_col <- intersect(nms, c("N", "N_subtype", "NA", "na_subtype", "N_type"))
+  if (length(h_col) >= 1 && !("H" %in% names(out))) out <- out %>% rename(H = all_of(h_col[[1]]))
+  if (length(n_col) >= 1 && !("N" %in% names(out))) out <- out %>% rename(N = all_of(n_col[[1]]))
+
+  # Parse subtype if needed
+  if ("subtype" %in% names(out)) {
+    if (!("H" %in% names(out))) out$H <- str_extract(as.character(out$subtype), "H\\d+")
+    if (!("N" %in% names(out))) out$N <- str_extract(as.character(out$subtype), "N\\d+")
+    if (!("influenza_type" %in% names(out))) out$influenza_type <- str_extract(as.character(out$subtype), "^[AB]")
+  }
+
+  keep_cols <- intersect(names(out), c("sample_id", "influenza_type", "H", "N", "subtype"))
+  if (length(keep_cols) >= 2) out <- out %>% select(all_of(keep_cols))
+  out
 }
 
-# Compare expected sample set with observed set
-compare_sets <- function(expected, observed) {
-  list(
-    missing = sort(setdiff(expected, observed)),
-    extra   = sort(setdiff(observed, expected))
-  )
+read_pass_readcount <- function(results_dir) {
+  f <- path(results_dir, "read_count", "pass_read_count_samples_mqc.tsv")
+  if (!file_exists(f)) return(NULL)
+
+  rc <- suppressWarnings(read_tsv(f, show_col_types = FALSE))
+  if (ncol(rc) < 2) {
+    rc <- suppressWarnings(read_delim(f, delim = "\\s+", show_col_types = FALSE, trim_ws = TRUE))
+  }
+  if (ncol(rc) < 2) return(NULL)
+
+  # Try to find columns
+  nms <- names(rc)
+  sample_col <- intersect(nms, c("Sample", "sample", "SAMPLE"))
+  read_col <- intersect(nms, c("Read count", "Read_count", "Read.count", "read_count", "ReadCount"))
+
+  sample_col <- if (length(sample_col) >= 1) sample_col[[1]] else nms[[1]]
+  read_col   <- if (length(read_col) >= 1) read_col[[1]] else nms[[2]]
+
+  rc %>%
+    transmute(
+      sample_id = as.character(.data[[sample_col]]),
+      read_count = suppressWarnings(as.numeric(.data[[read_col]]))
+    ) %>%
+    filter(!is.na(sample_id) & sample_id != "") %>%
+    distinct(sample_id, .keep_all = TRUE)
 }
 
-# Compute run-level metrics using samplesheet as truth
+# Run-level metrics (NO regex guesswork)
 compute_run_metrics <- function(pipeline_dir, results_dir) {
   ss_path <- find_samplesheet_path(pipeline_dir, results_dir)
   ss <- read_samplesheet(ss_path)
 
-  ss_samples <- character(0)
-  if (!is.null(ss) && "sample_id" %in% names(ss)) {
-    ss_samples <- unique(na.omit(as.character(ss$sample_id)))
-  }
+  # samplesheet missing is the only true "integrity" issue
+  has_samplesheet <- !is.null(ss) && nrow(ss) > 0
 
-  ss_match <- ss_samples[str_detect(ss_samples, SAMPLE_ID_REGEX)]
-  match_n <- length(ss_match)
+  sample_n <- if (has_samplesheet) nrow(ss) else 0L
 
-  # Passed samples: primarily from pass_read_count_samples_mqc.tsv
   rc <- read_pass_readcount(results_dir)
-  pass_n <- 0L
-
-  if (!is.null(rc)) {
-    # passed = in samplesheet matching set and has read_count > 0
-    pass_n <- rc %>%
-      filter(sample_id %in% ss_match, !is.na(read_count), read_count > 0) %>%
+  passed_n <- 0L
+  if (!is.null(rc) && has_samplesheet) {
+    passed_n <- rc %>%
+      filter(sample_id %in% ss$sample_id, !is.na(read_count), read_count > 0) %>%
       summarise(n = n()) %>% pull(n)
-    pass_n <- as.integer(pass_n %||% 0L)
-  } else {
-    # fallback to nextclade QC if rc doesn't exist
-    nx <- extract_nextclade(read_nextclade(results_dir))
-    if (!is.null(nx) && "qc_status" %in% names(nx)) {
-      nx2 <- nx %>%
-        mutate(qc_status_l = tolower(as.character(qc_status)),
-               is_pass = qc_status_l %in% c("good", "pass", "passed"))
-      pass_n <- sum(nx2$sample_id %in% ss_match & nx2$is_pass, na.rm = TRUE)
-    } else {
-      pass_n <- 0L
-    }
+    passed_n <- as.integer(passed_n %||% 0L)
   }
 
-  # Integrity checks
+  # missing outputs are informative, not errors
   nx <- extract_nextclade(read_nextclade(results_dir))
-  sub <- extract_HN(read_subtyping(results_dir))
-  mfq <- infer_samples_from_merged_fastq(results_dir)
+  sub <- extract_subtyping(read_subtyping(results_dir))
 
-  nx_samples  <- if (!is.null(nx)) unique(na.omit(as.character(nx$sample_id))) else character(0)
-  sub_samples <- if (!is.null(sub)) unique(na.omit(as.character(sub$sample_id))) else character(0)
+  missing_nextclade_n <- if (has_samplesheet) {
+    if (is.null(nx)) sample_n else sum(!(ss$sample_id %in% nx$sample_id))
+  } else NA_integer_
 
-  # Only judge integrity for expected matching samples
-  expected <- unique(ss_match)
-
-  has_ss <- !is.na(ss_path) && file_exists(ss_path) && length(ss_samples) > 0
-  expected_n <- length(expected)
-
-  has_nx  <- file_exists(path(results_dir, "nextclade", "nextclade.tsv"))
-  has_sub <- file_exists(path(results_dir, "subtyping_report", "subtype_results.csv"))
-  has_mfq <- dir_exists(path(results_dir, "fastq"))
-  has_rc  <- file_exists(path(results_dir, "read_count", "pass_read_count_samples_mqc.tsv"))
-
-  nx_cmp  <- compare_sets(expected, intersect(nx_samples, expected))
-  sub_cmp <- compare_sets(expected, intersect(sub_samples, expected))
-  mfq_cmp <- compare_sets(expected, intersect(mfq, expected))
-  rc_cmp  <- if (!is.null(rc)) compare_sets(expected, intersect(rc$sample_id, expected)) else list(missing = character(0), extra = character(0))
-
-  # Also track "extra" samples in outputs not in expected (useful diagnostic)
-  nx_extra  <- setdiff(nx_samples, expected)
-  sub_extra <- setdiff(sub_samples, expected)
-  mfq_extra <- setdiff(mfq, expected)
-  rc_extra  <- if (!is.null(rc)) setdiff(rc$sample_id, expected) else character(0)
-
-  issue <- FALSE
-  issue_msg <- ""
-
-  if (!has_ss) {
-    issue <- TRUE
-    issue_msg <- "No/empty samplesheet"
-  } else if (expected_n == 0) {
-    issue <- FALSE
-    issue_msg <- ""
-  } else {
-    missing_total <- 0L
-    extra_total <- 0L
-
-    if (has_nx)  missing_total <- missing_total + length(nx_cmp$missing)
-    if (has_sub) missing_total <- missing_total + length(sub_cmp$missing)
-    if (has_mfq) missing_total <- missing_total + length(mfq_cmp$missing)
-    if (has_rc)  missing_total <- missing_total + length(rc_cmp$missing)
-
-    if (has_nx)  extra_total <- extra_total + length(nx_extra)
-    if (has_sub) extra_total <- extra_total + length(sub_extra)
-    if (has_mfq) extra_total <- extra_total + length(mfq_extra)
-    if (has_rc)  extra_total <- extra_total + length(rc_extra)
-
-    if (missing_total > 0 || extra_total > 0) {
-      issue <- TRUE
-      issue_msg <- paste0("Mismatch (missing=", missing_total, ", extra=", extra_total, ")")
-    }
-  }
+  missing_subtyping_n <- if (has_samplesheet) {
+    if (is.null(sub)) sample_n else sum(!(ss$sample_id %in% sub$sample_id))
+  } else NA_integer_
 
   list(
     samplesheet_path = ss_path,
-    ss_match_samples = expected,
-    match_n = match_n,
-    pass_n = as.integer(pass_n),
-    issue = issue,
-    issue_msg = issue_msg
+    sample_n = sample_n,
+    passed_n = passed_n,
+    has_samplesheet = has_samplesheet,
+    missing_nextclade_n = missing_nextclade_n,
+    missing_subtyping_n = missing_subtyping_n
   )
 }
 
-# Create run registry dataframe
 list_runs <- function() {
   if (!dir_exists(DATA_ROOT)) return(tibble())
-
   run_dirs <- dir_ls(DATA_ROOT, type = "directory", recurse = FALSE)
 
   rows <- map(run_dirs, function(rd) {
     resolved <- resolve_results_dir(rd)
 
     if (is.null(resolved)) {
-      tibble(
+      return(tibble(
         run = basename(rd),
         status = "no_results",
         run_dir = rd,
         pipeline_dir = NA_character_,
         results_dir = NA_character_,
         updated = file_info(rd)$modification_time,
-        match_samples = 0L,
-        passed_samples = 0L,
-        issue = TRUE,
-        issue_msg = "No results",
+        sample_n = 0L,
+        passed_n = 0L,
+        samplesheet_path = NA_character_,
+        missing_nextclade_n = NA_integer_,
+        missing_subtyping_n = NA_integer_,
+        has_samplesheet = FALSE,
         multiqc_path = NA_character_,
-        multiqc_url = NA_character_,
-        samplesheet_path = NA_character_
-      )
-    } else {
-      results_dir <- resolved$results_dir
-      pipeline_dir <- resolved$pipeline_dir
-
-      multiqc_path <- path(results_dir, "MultiQC", "multiqc_report.html")
-      mq_url <- if (file_exists(multiqc_path)) path_to_url(multiqc_path) else NULL
-
-      has_nextclade <- file_exists(path(results_dir, "nextclade", "nextclade.tsv"))
-      has_subtyping <- file_exists(path(results_dir, "subtyping_report", "subtype_results.csv"))
-      status <- if (has_nextclade && has_subtyping) "done" else "partial"
-
-      metrics <- compute_run_metrics(pipeline_dir, results_dir)
-
-      tibble(
-        run = basename(rd),
-        status = status,
-        run_dir = rd,
-        pipeline_dir = pipeline_dir,
-        results_dir = results_dir,
-        updated = resolved$mtime,
-        match_samples = metrics$match_n,
-        passed_samples = metrics$pass_n,
-        issue = metrics$issue,
-        issue_msg = metrics$issue_msg,
-        multiqc_path = if (file_exists(multiqc_path)) multiqc_path else NA_character_,
-        multiqc_url = mq_url %||% NA_character_,
-        samplesheet_path = metrics$samplesheet_path
-      )
+        multiqc_url = NA_character_
+      ))
     }
+
+    results_dir <- resolved$results_dir
+    pipeline_dir <- resolved$pipeline_dir
+
+    has_nextclade <- file_exists(path(results_dir, "nextclade", "nextclade.tsv"))
+    has_subtyping <- file_exists(path(results_dir, "subtyping_report", "subtype_results.csv"))
+    status <- if (has_nextclade && has_subtyping) "done" else "partial"
+
+    multiqc_path <- path(results_dir, "MultiQC", "multiqc_report.html")
+    mq_url <- if (file_exists(multiqc_path)) path_to_url(multiqc_path) else NULL
+
+    met <- compute_run_metrics(pipeline_dir, results_dir)
+
+    tibble(
+      run = basename(rd),
+      status = status,
+      run_dir = rd,
+      pipeline_dir = pipeline_dir,
+      results_dir = results_dir,
+      updated = resolved$mtime,
+      sample_n = met$sample_n,
+      passed_n = met$passed_n,
+      samplesheet_path = met$samplesheet_path,
+      missing_nextclade_n = met$missing_nextclade_n,
+      missing_subtyping_n = met$missing_subtyping_n,
+      has_samplesheet = met$has_samplesheet,
+      multiqc_path = if (file_exists(multiqc_path)) multiqc_path else NA_character_,
+      multiqc_url = mq_url %||% NA_character_
+    )
   })
 
   bind_rows(rows) %>% arrange(desc(updated))
@@ -426,9 +315,6 @@ list_runs <- function() {
 
 ui <- fluidPage(
   titlePanel("NF_FLU Influenza Dashboard"),
-  tags$style(HTML("
-    .small-note { color: #666; font-size: 12px; }
-  ")),
   fluidRow(
     column(
       12,
@@ -438,25 +324,26 @@ ui <- fluidPage(
           6,
           checkboxInput(
             "include_empty_runs",
-            label = "Include runs without any matching samples (based on samplesheet)",
+            label = "Include runs without any samples (missing/empty samplesheet)",
             value = FALSE
-          ),
-          div(class = "small-note", sprintf("Matching regex: %s", SAMPLE_ID_REGEX))
+          )
         ),
         column(
           6,
           checkboxInput(
             "include_no_pass_runs",
-            label = "Include runs without any passed samples (read_count or Nextclade QC)",
+            label = "Include runs without any quality-passed samples",
             value = FALSE
-          ),
-          div(class = "small-note", "Passed: in pass_read_count_samples_mqc.tsv (fallback: nextclade qc.overallStatus=='good').")
+          )
         )
       ),
       DTOutput("runs_tbl"),
       hr(),
       uiOutput("run_header"),
-      DTOutput("samples_tbl")
+      DTOutput("samples_tbl"),
+      hr(),
+      tags$div(style = "color:#666; font-size:12px;",
+               "App author: Emanuel Heitlinger")
     )
   )
 )
@@ -477,39 +364,33 @@ server <- function(input, output, session) {
     if (nrow(runs) == 0) return(runs)
 
     if (!isTRUE(input$include_empty_runs)) {
-      runs <- runs %>% filter(match_samples > 0)
+      runs <- runs %>% filter(has_samplesheet, sample_n > 0)
     }
     if (!isTRUE(input$include_no_pass_runs)) {
-      runs <- runs %>% filter(passed_samples > 0)
+      runs <- runs %>% filter(passed_n > 0)
     }
     runs
   })
 
   output$runs_tbl <- renderDT({
     runs <- filtered_runs()
-
-    if (nrow(runs) == 0) {
-      return(datatable(
-        data.frame(Message = "No runs match the current filters."),
-        options = list(dom = "t"),
-        rownames = FALSE
-      ))
-    }
+    validate(need(nrow(runs) > 0, "No runs match the current filters."))
 
     disp <- runs %>%
       transmute(
         ` ` = case_when(
-          issue ~ "\U0001F6D1",              # 🛑
-          status == "done" ~ "\U0001F7E2",   # 🟢
-          status == "partial" ~ "\U0001F7E1",# 🟡
-          status == "no_results" ~ "\U000026AA", # ⚪
-          TRUE ~ "\U0001F534"               # 🔴
+          !has_samplesheet ~ "\U0001F6D1",        # 🛑 (only real error)
+          status == "done" ~ "\U0001F7E2",        # 🟢
+          status == "partial" ~ "\U0001F7E1",     # 🟡
+          status == "no_results" ~ "\U000026AA",  # ⚪
+          TRUE ~ "\U0001F534"                     # 🔴
         ),
         Run = run,
         Status = status,
-        Matching = match_samples,
-        Passed = passed_samples,
-        Integrity = ifelse(issue, issue_msg, "OK"),
+        Samples = sample_n,
+        Passed = passed_n,
+        Missing_nextclade = missing_nextclade_n,
+        Missing_subtyping = missing_subtyping_n,
         Updated = format(updated, "%Y-%m-%d %H:%M"),
         MultiQC = ifelse(
           !is.na(multiqc_url),
@@ -533,25 +414,22 @@ server <- function(input, output, session) {
         fontWeight = "bold"
       ) %>%
       formatStyle(
-        "Matching",
-        backgroundColor = styleInterval(
-          c(0, 5),
-          c("#f2dede", "#fcf8e3", "#dff0d8")
-        ),
-        fontWeight = "bold"
-      ) %>%
-      formatStyle(
         "Passed",
-        backgroundColor = styleInterval(
-          c(0, 5),
-          c("#f2dede", "#fcf8e3", "#dff0d8")
-        ),
+        backgroundColor = styleInterval(c(0, 5), c("#f2dede", "#fcf8e3", "#dff0d8")),
         fontWeight = "bold"
       ) %>%
       formatStyle(
-        "Integrity",
-        backgroundColor = JS("function(value){ return (value === 'OK') ? '#dff0d8' : '#f2dede'; }"),
+        "Samples",
+        backgroundColor = styleInterval(c(0, 5), c("#f2dede", "#fcf8e3", "#dff0d8")),
         fontWeight = "bold"
+      ) %>%
+      formatStyle(
+        "Missing_nextclade",
+        backgroundColor = styleInterval(c(0, 1, 5), c("#dff0d8", "#fcf8e3", "#fcf8e3", "#eeeeee"))
+      ) %>%
+      formatStyle(
+        "Missing_subtyping",
+        backgroundColor = styleInterval(c(0, 1, 5), c("#dff0d8", "#fcf8e3", "#fcf8e3", "#eeeeee"))
       )
   })
 
@@ -580,20 +458,22 @@ server <- function(input, output, session) {
       tags$span("Samplesheet: —")
     }
 
-    integrity <- if (isTRUE(sr$issue)) {
-      tags$p(tags$b("Integrity: "), tags$span(style = "color:#a94442; font-weight:700;", sr$issue_msg))
-    } else {
-      tags$p(tags$b("Integrity: "), tags$span(style = "color:#3c763d; font-weight:700;", "OK"))
+    warn <- NULL
+    if (!isTRUE(sr$has_samplesheet)) {
+      warn <- tags$p(tags$span(style = "color:#a94442; font-weight:700;",
+                               "ERROR: Missing/empty samplesheet (cannot build sample table)."))
     }
 
     tags$div(
       h3(paste0("Run: ", sr$run)),
       tags$p(
         tags$b("Status: "), sr$status,
-        " | ", tags$b("Matching: "), sr$match_samples,
-        " | ", tags$b("Passed: "), sr$passed_samples
+        " | ", tags$b("Samples: "), sr$sample_n,
+        " | ", tags$b("Passed: "), sr$passed_n,
+        " | ", tags$b("Missing nextclade: "), sr$missing_nextclade_n %||% "—",
+        " | ", tags$b("Missing subtyping: "), sr$missing_subtyping_n %||% "—"
       ),
-      integrity,
+      warn,
       tags$p(mq),
       tags$p(ss),
       tags$p(tags$small(tags$code(sr$results_dir)))
@@ -602,108 +482,108 @@ server <- function(input, output, session) {
 
   output$samples_tbl <- renderDT({
     sr <- selected_run()
-    if (is.null(sr) || is.na(sr$results_dir) || is.na(sr$pipeline_dir)) return(datatable(data.frame()))
+    validate(need(!is.null(sr), "Select a run above."))
 
-    results_dir <- sr$results_dir[[1]]
-    pipeline_dir <- sr$pipeline_dir[[1]]
+    # Hardening: never let a bad run crash the UI
+    tryCatch({
 
-    # Authoritative samples from samplesheet
-    ss_path <- find_samplesheet_path(pipeline_dir, results_dir)
-    ss <- read_samplesheet(ss_path)
+      results_dir <- sr$results_dir[[1]]
+      pipeline_dir <- sr$pipeline_dir[[1]]
 
-    if (is.null(ss) || !"sample_id" %in% names(ss)) {
-      return(datatable(
-        data.frame(Message = "No readable samplesheet found for this run."),
-        options = list(dom = "t"),
+      validate(need(!is.na(results_dir) && dir_exists(results_dir), "Run has no readable results directory."))
+
+      ss_path <- find_samplesheet_path(pipeline_dir, results_dir)
+      ss <- read_samplesheet(ss_path)
+      validate(need(!is.null(ss) && nrow(ss) > 0, "No readable samplesheet for this run."))
+
+      # outputs (optional)
+      nx  <- extract_nextclade(read_nextclade(results_dir))
+      sub <- extract_subtyping(read_subtyping(results_dir))
+      rc  <- read_pass_readcount(results_dir)
+
+      df <- ss %>%
+        select(sample_id, everything()) %>%
+        left_join(rc, by = "sample_id") %>%
+        left_join(sub, by = "sample_id") %>%
+        left_join(nx, by = "sample_id") %>%
+        mutate(
+          has_reads = !is.na(read_count),
+          has_subtyping = !is.na(H) | !is.na(N) | !is.na(subtype) | !is.na(influenza_type),
+          has_nextclade = !is.na(clade) | !is.na(subclade) | !is.na(qc_status),
+          passed_reads = !is.na(read_count) & read_count > 0
+        )
+
+      # Keep the run-table readable
+      # (You can add fastq_1/fastq_2 later as hidden columns if you want)
+      show_cols <- intersect(
+        names(df),
+        c("sample_id", "read_count", "passed_reads",
+          "influenza_type", "H", "N", "subtype",
+          "clade", "subclade", "qc_status", "qc_score",
+          "has_reads", "has_subtyping", "has_nextclade")
+      )
+      disp <- df %>% select(all_of(show_cols))
+
+      dt <- datatable(
+        disp,
+        options = list(pageLength = 25, autoWidth = TRUE),
         rownames = FALSE
-      ))
-    }
-
-    ss_match <- ss %>%
-      distinct(sample_id, .keep_all = TRUE) %>%
-      mutate(sample_id = as.character(sample_id)) %>%
-      filter(str_detect(sample_id, SAMPLE_ID_REGEX))
-
-    if (nrow(ss_match) == 0) {
-      return(datatable(
-        data.frame(Message = "Samplesheet found, but no samples match the influenza sample regex for this dashboard."),
-        options = list(dom = "t"),
-        rownames = FALSE
-      ))
-    }
-
-    # Outputs
-    sub <- extract_HN(read_subtyping(results_dir))
-    nx  <- extract_nextclade(read_nextclade(results_dir))
-    rc  <- read_pass_readcount(results_dir)
-
-    # Start from samplesheet only, then join outputs
-    df <- ss_match %>%
-      left_join(sub, by = "sample_id") %>%
-      left_join(nx, by = "sample_id") %>%
-      left_join(rc, by = "sample_id") %>%
-      mutate(
-        has_subtyping = !is.na(H) | !is.na(N) | !is.na(subtype) | !is.na(influenza_type),
-        has_nextclade = !is.na(clade) | !is.na(subclade) | !is.na(qc_status),
-        has_reads = !is.na(read_count),
-        passed_reads = !is.na(read_count) & read_count > 0
       )
 
-    # Display columns
-    show_cols <- c("sample_id",
-                   intersect(names(df), c("read_count", "passed_reads",
-                                          "influenza_type", "H", "N", "subtype",
-                                          "clade", "subclade", "qc_status", "qc_score",
-                                          "has_reads", "has_subtyping", "has_nextclade")))
-    show_cols <- unique(show_cols)
-    disp <- df %>% select(all_of(show_cols))
+      # Highlight missing outputs (informative, not "error")
+      for (col in c("has_reads", "has_subtyping", "has_nextclade")) {
+        if (col %in% names(disp)) {
+          dt <- dt %>% formatStyle(
+            col,
+            backgroundColor = styleEqual(c(TRUE, FALSE), c("#dff0d8", "#fcf8e3")),
+            fontWeight = "bold"
+          )
+        }
+      }
 
-    dt <- datatable(
-      disp,
-      options = list(pageLength = 25, autoWidth = TRUE),
-      rownames = FALSE
-    )
-
-    # Highlight booleans and QC
-    if ("qc_status" %in% names(disp)) {
-      dt <- dt %>% formatStyle(
-        "qc_status",
-        backgroundColor = styleEqual(
-          c("good", "mediocre", "bad", "fail", "warning", "unknown"),
-          c("#dff0d8", "#fcf8e3", "#f2dede", "#f2dede", "#fcf8e3", "#eeeeee")
-        ),
-        fontWeight = "bold"
-      )
-    }
-
-    if ("passed_reads" %in% names(disp)) {
-      dt <- dt %>% formatStyle(
-        "passed_reads",
-        backgroundColor = styleEqual(c(TRUE, FALSE), c("#dff0d8", "#f2dede")),
-        fontWeight = "bold"
-      )
-    }
-
-    for (col in c("has_reads", "has_subtyping", "has_nextclade")) {
-      if (col %in% names(disp)) {
+      if ("passed_reads" %in% names(disp)) {
         dt <- dt %>% formatStyle(
-          col,
+          "passed_reads",
           backgroundColor = styleEqual(c(TRUE, FALSE), c("#dff0d8", "#f2dede")),
           fontWeight = "bold"
         )
       }
-    }
 
-    # Highlight unusual H types
-    if ("H" %in% names(disp)) {
-      dt <- dt %>% formatStyle(
-        "H",
-        backgroundColor = styleEqual(c("H5", "H7"), c("#f2dede", "#f2dede")),
-        fontWeight = styleEqual(c("H5", "H7"), c("bold", "bold"))
+      if ("qc_status" %in% names(disp)) {
+        dt <- dt %>% formatStyle(
+          "qc_status",
+          backgroundColor = styleEqual(
+            c("good", "mediocre", "bad", "fail", "warning", "unknown"),
+            c("#dff0d8", "#fcf8e3", "#f2dede", "#f2dede", "#fcf8e3", "#eeeeee")
+          ),
+          fontWeight = "bold"
+        )
+      }
+
+      if ("H" %in% names(disp)) {
+        dt <- dt %>% formatStyle(
+          "H",
+          backgroundColor = styleEqual(c("H5", "H7"), c("#f2dede", "#f2dede")),
+          fontWeight = styleEqual(c("H5", "H7"), c("bold", "bold"))
+        )
+      }
+
+      dt
+
+    }, error = function(e) {
+      message("[nf-flu shiny] samples_tbl error: ", conditionMessage(e))
+      datatable(
+        data.frame(
+          Message = c(
+            "An error has occurred. Check your logs or contact the app author for clarification.",
+            paste0("Details: ", conditionMessage(e)),
+            "App author: Emanuel Heitlinger"
+          )
+        ),
+        options = list(dom = "t"),
+        rownames = FALSE
       )
-    }
-
-    dt
+    })
   })
 }
 
