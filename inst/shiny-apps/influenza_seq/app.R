@@ -1,4 +1,4 @@
-# app.R (FIXED NULL-COALESCE + VERY VERBOSE)
+# app.R (FIXED SCHEMAS + VERY VERBOSE)
 # App author: Emanuel Heitlinger
 
 library(shiny)
@@ -23,17 +23,15 @@ REFRESH_MS <- as.integer(Sys.getenv("NF_FLU_REFRESH_MS", unset = "120000")) # 2 
 
 # ---------------- helpers ----------------
 
-# NULL-coalescer: SAFE FOR TIBBLES (only checks is.null)
+# NULL-coalescer (safe for tibbles)
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
-# scalar-string coalescer: for character paths/urls
+# scalar-string coalescer (NULL/NA/"")
 `%||str%` <- function(a, b) {
   if (is.null(a) || length(a) < 1) return(b)
   x <- as.character(a[[1]])
   if (is.na(x) || x == "") b else x
 }
-
-rtrim_slash <- function(x) sub("/+$", "", x)
 
 scalar_chr <- function(x) {
   if (is.null(x) || length(x) < 1) return(NA_character_)
@@ -46,12 +44,38 @@ scalar_lgl <- function(x) {
 
 dbg <- function(...) message(sprintf("[nf-flu shiny] %s", paste0(..., collapse = "")))
 
+ensure_cols <- function(df, cols) {
+  # ensure all cols exist; fill missing with NA
+  for (cc in cols) {
+    if (!(cc %in% names(df))) df[[cc]] <- NA
+  }
+  df
+}
+
+rtrim_slash <- function(x) sub("/+$", "", x)
+
 path_to_url <- function(fs_path) {
   if (is.null(BASE_URL)) return(NULL)
   rel <- path_rel(fs_path, start = DATA_ROOT)
   rel <- gsub("\\\\", "/", rel)
   paste0(rtrim_slash(BASE_URL), "/", rel)
 }
+
+normalize_id <- function(x) {
+  x <- as.character(x)
+  str_replace(x, "_[12]$", "")
+}
+
+standardize_sample_id <- function(df) {
+  if (is.null(df)) return(df)
+  nms <- names(df)
+  cand <- intersect(nms, c("sample", "sample_id", "seqName", "name", "sequence_name", "SequenceName"))
+  if (length(cand) >= 1) df <- df %>% rename(sample_id = all_of(cand[[1]]))
+  if (!("sample_id" %in% names(df))) df$sample_id <- NA_character_
+  df %>% mutate(sample_id = as.character(sample_id))
+}
+
+# ---------------- file discovery ----------------
 
 resolve_results_dir <- function(run_dir) {
   direct <- path(run_dir, "results")
@@ -109,26 +133,7 @@ read_samplesheet <- function(samplesheet_path) {
     distinct(sample_id, .keep_all = TRUE)
 }
 
-normalize_id <- function(x) {
-  x <- as.character(x)
-  str_replace(x, "_[12]$", "")
-}
-
-standardize_sample_id <- function(df) {
-  if (is.null(df)) return(df)
-  nms <- names(df)
-  cand <- intersect(nms, c("sample", "sample_id", "seqName", "name", "sequence_name", "SequenceName"))
-  if (length(cand) >= 1) df <- df %>% rename(sample_id = all_of(cand[[1]]))
-  if (!("sample_id" %in% names(df))) df$sample_id <- NA_character_
-  df %>% mutate(sample_id = as.character(sample_id))
-}
-
-# Empty tables so joins never break
-empty_rc  <- function() tibble(sample_id = character(), read_count = numeric())
-empty_nx  <- function() tibble(sample_id = character(), clade = character(), subclade = character(),
-                               qc_status = character(), qc_score = numeric())
-empty_sub <- function() tibble(sample_id = character(), influenza_type = character(),
-                               H = character(), N = character(), subtype = character())
+# ---------------- readers ----------------
 
 read_nextclade_raw <- function(results_dir) {
   f <- path(results_dir, "nextclade", "nextclade.tsv")
@@ -154,8 +159,13 @@ read_pass_readcount_raw <- function(results_dir) {
   rc
 }
 
-extract_readcount <- function(rc_raw) {
-  if (is.null(rc_raw) || ncol(rc_raw) < 2) return(NULL)
+# ---------------- parsers with FIXED SCHEMAS ----------------
+
+parse_readcount <- function(rc_raw) {
+  # returns fixed columns: sample_id, read_count
+  if (is.null(rc_raw) || ncol(rc_raw) < 2) {
+    return(tibble(sample_id = character(), read_count = numeric()))
+  }
 
   nms <- names(rc_raw)
   sample_col <- intersect(nms, c("Sample", "sample", "SAMPLE"))
@@ -164,20 +174,29 @@ extract_readcount <- function(rc_raw) {
   sample_col <- if (length(sample_col) >= 1) sample_col[[1]] else nms[[1]]
   read_col   <- if (length(read_col) >= 1) read_col[[1]] else nms[[2]]
 
-  rc_raw %>%
+  out <- rc_raw %>%
     transmute(
       sample_id = normalize_id(as.character(.data[[sample_col]])),
       read_count = suppressWarnings(as.numeric(.data[[read_col]]))
     ) %>%
     filter(!is.na(sample_id) & sample_id != "") %>%
     distinct(sample_id, .keep_all = TRUE)
+
+  ensure_cols(out, c("sample_id", "read_count")) %>%
+    select(sample_id, read_count)
 }
 
-extract_nextclade <- function(nx_df) {
-  if (is.null(nx_df)) return(NULL)
-  nx_df <- standardize_sample_id(nx_df) %>% mutate(sample_id = normalize_id(sample_id))
-  out <- nx_df
+parse_nextclade <- function(nx_raw) {
+  # fixed columns: sample_id, clade, subclade, qc_status, qc_score
+  if (is.null(nx_raw)) {
+    return(tibble(sample_id = character(), clade = character(), subclade = character(),
+                  qc_status = character(), qc_score = numeric()))
+  }
 
+  out <- standardize_sample_id(nx_raw) %>%
+    mutate(sample_id = normalize_id(sample_id))
+
+  # rename possibilities
   if (!("clade" %in% names(out))) {
     cc <- intersect(names(out), c("Clade"))
     if (length(cc) >= 1) out <- out %>% rename(clade = all_of(cc[[1]]))
@@ -187,25 +206,40 @@ extract_nextclade <- function(nx_df) {
     if (length(sc) >= 1) out <- out %>% rename(subclade = all_of(sc[[1]]))
   }
 
-  qc_status_col <- intersect(names(out), c("qc.overallStatus", "qc_overallStatus", "overallStatus"))
-  if (length(qc_status_col) >= 1 && !("qc_status" %in% names(out))) out <- out %>% rename(qc_status = all_of(qc_status_col[[1]]))
+  qs <- intersect(names(out), c("qc.overallStatus", "qc_overallStatus", "overallStatus"))
+  if (length(qs) >= 1 && !("qc_status" %in% names(out))) out <- out %>% rename(qc_status = all_of(qs[[1]]))
+  qsc <- intersect(names(out), c("qc.overallScore", "qc_overallScore", "overallScore"))
+  if (length(qsc) >= 1 && !("qc_score" %in% names(out))) out <- out %>% rename(qc_score = all_of(qsc[[1]]))
 
-  qc_score_col <- intersect(names(out), c("qc.overallScore", "qc_overallScore", "overallScore"))
-  if (length(qc_score_col) >= 1 && !("qc_score" %in% names(out))) out <- out %>% rename(qc_score = all_of(qc_score_col[[1]]))
+  out <- ensure_cols(out, c("sample_id", "clade", "subclade", "qc_status", "qc_score")) %>%
+    transmute(
+      sample_id = sample_id,
+      clade = as.character(clade),
+      subclade = as.character(subclade),
+      qc_status = as.character(qc_status),
+      qc_score = suppressWarnings(as.numeric(qc_score))
+    ) %>%
+    filter(!is.na(sample_id) & sample_id != "") %>%
+    distinct(sample_id, .keep_all = TRUE)
 
-  keep_cols <- intersect(names(out), c("sample_id", "clade", "subclade", "qc_status", "qc_score"))
-  if (length(keep_cols) >= 2) out <- out %>% select(all_of(keep_cols))
   out
 }
 
-extract_subtyping <- function(sub_df) {
-  if (is.null(sub_df)) return(NULL)
-  sub_df <- standardize_sample_id(sub_df) %>% mutate(sample_id = normalize_id(sample_id))
-  out <- sub_df
+parse_subtyping <- function(sub_raw) {
+  # fixed columns: sample_id, influenza_type, H, N, subtype
+  if (is.null(sub_raw)) {
+    return(tibble(sample_id = character(), influenza_type = character(),
+                  H = character(), N = character(), subtype = character()))
+  }
+
+  out <- standardize_sample_id(sub_raw) %>%
+    mutate(sample_id = normalize_id(sample_id))
+
   nms <- names(out)
 
   type_col <- intersect(nms, c("influenza_type", "type", "virus_type", "InfluenzaType"))
   sub_col  <- intersect(nms, c("subtype", "subtype_prediction", "prediction", "Subtype"))
+
   if (length(type_col) >= 1 && !("influenza_type" %in% names(out))) out <- out %>% rename(influenza_type = all_of(type_col[[1]]))
   if (length(sub_col)  >= 1 && !("subtype" %in% names(out))) out <- out %>% rename(subtype = all_of(sub_col[[1]]))
 
@@ -214,18 +248,30 @@ extract_subtyping <- function(sub_df) {
   if (length(h_col) >= 1 && !("H" %in% names(out))) out <- out %>% rename(H = all_of(h_col[[1]]))
   if (length(n_col) >= 1 && !("N" %in% names(out))) out <- out %>% rename(N = all_of(n_col[[1]]))
 
+  out <- ensure_cols(out, c("sample_id", "influenza_type", "H", "N", "subtype"))
+
+  # derive H/N/type if subtype exists
   if ("subtype" %in% names(out)) {
-    if (!("H" %in% names(out))) out$H <- str_extract(as.character(out$subtype), "H\\d+")
-    if (!("N" %in% names(out))) out$N <- str_extract(as.character(out$subtype), "N\\d+")
-    if (!("influenza_type" %in% names(out))) out$influenza_type <- str_extract(as.character(out$subtype), "^[AB]")
+    st <- as.character(out$subtype)
+    if (all(is.na(out$H))) out$H <- str_extract(st, "H\\d+")
+    if (all(is.na(out$N))) out$N <- str_extract(st, "N\\d+")
+    if (all(is.na(out$influenza_type))) out$influenza_type <- str_extract(st, "^[AB]")
   }
 
-  keep_cols <- intersect(names(out), c("sample_id", "influenza_type", "H", "N", "subtype"))
-  if (length(keep_cols) >= 2) out <- out %>% select(all_of(keep_cols))
-  out
+  out %>%
+    transmute(
+      sample_id = sample_id,
+      influenza_type = as.character(influenza_type),
+      H = as.character(H),
+      N = as.character(N),
+      subtype = as.character(subtype)
+    ) %>%
+    filter(!is.na(sample_id) & sample_id != "") %>%
+    distinct(sample_id, .keep_all = TRUE)
 }
 
-# FAST run listing
+# ---------------- runs list (fast) ----------------
+
 list_runs_fast <- function() {
   if (!dir_exists(DATA_ROOT)) return(tibble())
   run_dirs <- dir_ls(DATA_ROOT, type = "directory", recurse = FALSE)
@@ -241,7 +287,6 @@ list_runs_fast <- function() {
         results_dir = NA_character_,
         updated = file_info(rd)$modification_time,
         has_samplesheet = FALSE,
-        samplesheet_path = NA_character_,
         multiqc_path = NA_character_,
         multiqc_url = NA_character_
       ))
@@ -268,7 +313,6 @@ list_runs_fast <- function() {
       results_dir = results_dir,
       updated = resolved$mtime,
       has_samplesheet = has_ss,
-      samplesheet_path = ss_path,
       multiqc_path = if (file_exists(multiqc_path)) multiqc_path else NA_character_,
       multiqc_url = mq_url
     )
@@ -424,27 +468,28 @@ server <- function(input, output, session) {
 
       rc_raw <- read_pass_readcount_raw(results_dir)
       dbg("  readcount raw=", if (is.null(rc_raw)) "NULL" else paste0("ncol=", ncol(rc_raw), " nrow=", nrow(rc_raw)))
-      rc <- extract_readcount(rc_raw)
-      rc <- rc %||% empty_rc()
+      rc <- parse_readcount(rc_raw)
       dbg("  readcount parsed rows=", nrow(rc))
 
       sub_raw <- read_subtyping_raw(results_dir)
       dbg("  subtyping raw=", if (is.null(sub_raw)) "NULL" else paste0("ncol=", ncol(sub_raw), " nrow=", nrow(sub_raw)))
-      sub <- extract_subtyping(sub_raw)
-      sub <- sub %||% empty_sub()
-      dbg("  subtyping parsed rows=", nrow(sub))
-
+      sub <- parse_subtyping(sub_raw)
+      dbg("  subtyping parsed rows=", nrow(sub), " cols=", paste(names(sub), collapse=","))
       nx_raw <- read_nextclade_raw(results_dir)
       dbg("  nextclade raw=", if (is.null(nx_raw)) "NULL" else paste0("ncol=", ncol(nx_raw), " nrow=", nrow(nx_raw)))
-      nx <- extract_nextclade(nx_raw)
-      nx <- nx %||% empty_nx()
-      dbg("  nextclade parsed rows=", nrow(nx))
+      nx <- parse_nextclade(nx_raw)
+      dbg("  nextclade parsed rows=", nrow(nx), " cols=", paste(names(nx), collapse=","))
 
       df <- ss %>%
         select(sample_id) %>%
         left_join(rc,  by = "sample_id") %>%
         left_join(sub, by = "sample_id") %>%
-        left_join(nx,  by = "sample_id") %>%
+        left_join(nx,  by = "sample_id")
+
+      # enforce expected cols in the joined df too (belt + suspenders)
+      df <- ensure_cols(df, c("read_count","influenza_type","H","N","subtype","clade","subclade","qc_status","qc_score"))
+
+      df <- df %>%
         mutate(
           has_reads = !is.na(read_count),
           has_subtyping = !is.na(H) | !is.na(N) | !is.na(subtype) | !is.na(influenza_type),
@@ -454,46 +499,27 @@ server <- function(input, output, session) {
 
       dbg("  joined df rows=", nrow(df), " cols=", ncol(df))
 
-      if (!isTRUE(input$include_no_pass_runs) && "passed_reads" %in% names(df)) {
+      if (!isTRUE(input$include_no_pass_runs)) {
         validate(need(any(df$passed_reads, na.rm = TRUE),
                       "This run has zero passed samples (per read_count). Enable the checkbox to include it."))
       }
 
-      show_cols <- intersect(
-        names(df),
-        c("sample_id", "read_count", "passed_reads",
-          "influenza_type", "H", "N", "subtype",
-          "clade", "subclade", "qc_status", "qc_score",
-          "has_reads", "has_subtyping", "has_nextclade")
-      )
-      disp <- df %>% select(all_of(show_cols))
+      show_cols <- c("sample_id","read_count","passed_reads",
+                     "influenza_type","H","N","subtype",
+                     "clade","subclade","qc_status","qc_score",
+                     "has_reads","has_subtyping","has_nextclade")
+      disp <- df %>% select(any_of(show_cols))
 
       dt <- datatable(disp, options = list(pageLength = 25, autoWidth = TRUE), rownames = FALSE)
 
       for (col in c("has_reads", "has_subtyping", "has_nextclade")) {
-        if (col %in% names(disp)) {
-          dt <- dt %>% formatStyle(col,
-                                   backgroundColor = styleEqual(c(TRUE, FALSE), c("#dff0d8", "#fcf8e3")),
-                                   fontWeight = "bold")
-        }
-      }
-
-      if ("passed_reads" %in% names(disp)) {
-        dt <- dt %>% formatStyle("passed_reads",
-                                 backgroundColor = styleEqual(c(TRUE, FALSE), c("#dff0d8", "#f2dede")),
+        dt <- dt %>% formatStyle(col,
+                                 backgroundColor = styleEqual(c(TRUE, FALSE), c("#dff0d8", "#fcf8e3")),
                                  fontWeight = "bold")
       }
-
-      if ("qc_status" %in% names(disp)) {
-        dt <- dt %>% formatStyle(
-          "qc_status",
-          backgroundColor = styleEqual(
-            c("good", "mediocre", "bad", "fail", "warning", "unknown"),
-            c("#dff0d8", "#fcf8e3", "#f2dede", "#f2dede", "#fcf8e3", "#eeeeee")
-          ),
-          fontWeight = "bold"
-        )
-      }
+      dt <- dt %>% formatStyle("passed_reads",
+                               backgroundColor = styleEqual(c(TRUE, FALSE), c("#dff0d8", "#f2dede")),
+                               fontWeight = "bold")
 
       dt
 
