@@ -2,18 +2,30 @@
 % Please edit documentation in R/SurvNet_Import_general.R
 \name{import_SurvNet}
 \alias{import_SurvNet}
-\title{import_SurvNet}
+\title{Funktion zur Abfrage von Daten aus der SurvNet-Datenbank}
 \usage{
-import_SurvNet(query, dsn = odbcListDataSources()$name)
+import_SurvNet(query, dsn = "SurvNet_datenbank")
+}
+\arguments{
+\item{query}{Dieser Wert wird mit der Funktion build_query() erzeugt. Alternativ könnte hier ein beliebiger Abfragecode
+im SQL-Format übergeben werden.}
+
+\item{dsn}{Hiermit wird die SQL-Datenquelle festgelegt. Als Standard ist bereits "SurvNet_datenbank" festgelegt.
+Sollte die Datenquelle auf Deinem Rechner einen anderen Namen tragen, muss er an dieser Stelle
+für den Parameter dsn übergeben werden.}
 }
 \value{
-A data frame specified columns (hardcoded for now)
+Die Ausgabe ist ein aus der SurvNet-Datenbank ausgelesener Datensatz, auf den bspw. im nächsten Schritt
+         die Funktion add_values() angewendet werden kann, um die Daten lesbar/interpretierbar zu machen.
 }
 \description{
+Das Hauptargument für diese Funktion "query" entsteht durch die Funktion build_query().
+             Zusätzlich dazu muss die Datenquelle "dsn" festgelegt sein
+}
+\details{
 import_SurvNet
 }
 \examples{
-import_SurvNet(build_query())
-
+SurvNet_data <- import_SurvNet(build_query(Thema="Tageskontrolle")
 
 }

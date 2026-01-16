@@ -6,7 +6,7 @@
 #' @description Es können spezielle vorgefertigte Abfragen erstellt werden.//
 #'              Zusätzlich kann die Periode der Abfrage unabhängig davon festgelegt werden.
 #'              Das Thema Tageskontrolle wird gewöhnlich mit der Periode last2weeks kombiniert
-#'              Das Thmea IMS_RIDOM wird gewöhnlich mit der Periode IMS_since_2023 kombiniert.
+#'              Das Thema IMS_RIDOM wird gewöhnlich mit der Periode IMS_since_2023 kombiniert.
 #' @param Thema Auswahl zwischen alle, Tageskontrolle, VHF, WBK, Arboviren, ZoonotischeINV, SerovarSAL, Influenza, COVID19, RSV, IMS_RIDOM
 #' @param Periode Auswahl zwischen alle, last2weeks, thisyear, last2years, last5years, last10years, IMS_since_2023
 #'
@@ -132,16 +132,27 @@ build_query <- function(Thema=NULL, Periode=c("alle","last2weeks","thisyear","la
 
 #' import_SurvNet
 #'
-#' @return A data frame specified columns (hardcoded for now)
+#' @title Funktion zur Abfrage von Daten aus der SurvNet-Datenbank
+#' @description Das Hauptargument für diese Funktion "query" entsteht durch die Funktion build_query().
+#'              Zusätzlich dazu muss die Datenquelle "dsn" festgelegt sein
+
+#' @param query Dieser Wert wird mit der Funktion build_query() erzeugt. Alternativ könnte hier ein beliebiger Abfragecode
+#'              im SQL-Format übergeben werden.
+#' @param dsn Hiermit wird die SQL-Datenquelle festgelegt. Als Standard ist bereits "SurvNet_datenbank" festgelegt.
+#'            Sollte die Datenquelle auf Deinem Rechner einen anderen Namen tragen, muss er an dieser Stelle
+#'            für den Parameter dsn übergeben werden.
+#'
+#' @return  Die Ausgabe ist ein aus der SurvNet-Datenbank ausgelesener Datensatz, auf den bspw. im nächsten Schritt
+#'          die Funktion add_values() angewendet werden kann, um die Daten lesbar/interpretierbar zu machen.
+#'
+#' @import odbc
 #'
 #' @export
 #'
-#' @import odbc
 #' @examples
-#' import_SurvNet(build_query())
+#' SurvNet_data <- import_SurvNet(build_query(Thema="Tageskontrolle")
 #'
-#'
-import_SurvNet <- function(query,  dsn = NULL){
+import_SurvNet <- function(query,  dsn = "SurvNet_datenbank"){
   if (is.null(dsn)) {
     dsn <- odbc::odbcListDataSources()$name
   }
@@ -278,10 +289,28 @@ add_values <- function(df) {
     df <- df[!duplicated(df$IdRecord), ]
   }
 
-  # Merge nur, wenn PathogenABV existiert
+  # Merge nur, wenn PathogenABV_ID existiert
   if ("PathogenABV_ID" %in% names(df)) {
     df <- merge(df, PathogenABV, all.x=TRUE, by = "PathogenABV_ID")
-    #df$PathogenABV_ID <- NULL
+    df$PathogenABV_ID <- NULL
+  }
+
+  # Merge nur, wenn PathogenWBK_ID existiert
+  if ("PathogenWBK_ID" %in% names(df)) {
+    df <- merge(df, PathogenWBK, all.x=TRUE, by = "PathogenWBK_ID")
+    df$PathogenWBK_ID <- NULL
+  }
+
+  # Merge nur, wenn PathogenVHF_ID existiert
+  if ("PathogenVHF_ID" %in% names(df)) {
+    df <- merge(df, PathogenVHF, all.x=TRUE, by = "PathogenVHF_ID")
+    df$PathogenVHF_ID <- NULL
+  }
+
+    # Merge nur, wenn PathogenSAL_ID existiert
+  if ("PathogenSAL_ID" %in% names(df)) {
+    df <- merge(df, PathogenSAL, all.x=TRUE, by = "PathogenSAL_ID")
+    df$PathogenSAL_ID <- NULL
   }
 
   #Unnötige oder doppelte Spalten entfernen

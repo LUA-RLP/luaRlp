@@ -22,7 +22,7 @@ Ausgabe wird in der Funktion import_SurvNet verwendet.
 Es können spezielle vorgefertigte Abfragen erstellt werden.//
              Zusätzlich kann die Periode der Abfrage unabhängig davon festgelegt werden.
              Das Thema Tageskontrolle wird gewöhnlich mit der Periode last2weeks kombiniert
-             Das Thmea IMS_RIDOM wird gewöhnlich mit der Periode IMS_since_2023 kombiniert.
+             Das Thema IMS_RIDOM wird gewöhnlich mit der Periode IMS_since_2023 kombiniert.
 }
 \details{
 SurvNet_Abfrage
