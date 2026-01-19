@@ -12,9 +12,9 @@ library(tibble)
 
 # ---------------- CONFIG ----------------
 
-DATA_ROOT <- Sys.getenv("NF_FLU_DATA_ROOT", unset = "/data/NF/backup_NF_FLU_backup")
+## DATA_ROOT <- Sys.getenv("NF_FLU_DATA_ROOT", unset = "/data/NF/backup_NF_FLU_backup")
 # Production later:
-# DATA_ROOT <- Sys.getenv("NF_FLU_DATA_ROOT", unset = "/data/NF/NF_FLU")
+DATA_ROOT <- Sys.getenv("NF_FLU_DATA_ROOT", unset = "/data/NF/NF_FLU")
 
 BASE_URL <- Sys.getenv("NF_FLU_BASE_URL", unset = "")
 if (BASE_URL == "") BASE_URL <- NULL
