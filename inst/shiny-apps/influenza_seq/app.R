@@ -5,7 +5,6 @@ library(shiny)
 library(dplyr)
 library(DT)
 
-# Load building blocks
 source("R/config.R", local = TRUE)
 source("R/utils.R", local = TRUE)
 source("R/io_discovery.R", local = TRUE)
@@ -67,7 +66,23 @@ server <- function(input, output, session) {
     runs <- filtered_runs()
     validate(need(nrow(runs) > 0, "No runs found (or none match filters)."))
 
-    disp <- runs %>%
+    # ---- NEW: cached counts per run (fast after first computation) ----
+    metrics <- purrr::pmap_dfr(
+      list(runs$pipeline_dir, runs$results_dir),
+      function(pipeline_dir, results_dir) {
+        tryCatch(
+          run_sample_counts_cached(pipeline_dir, results_dir),
+          error = function(e) tibble::tibble(
+            n_samples = NA_integer_, n_reads = NA_integer_,
+            n_hn = NA_integer_, n_subtype = NA_integer_, n_nextclade = NA_integer_
+          )
+        )
+      }
+    )
+
+    runs2 <- dplyr::bind_cols(runs, metrics)
+
+    disp <- runs2 %>%
       transmute(
         ` ` = case_when(
           !has_samplesheet ~ "\U0001F6D1",        # 🛑
@@ -79,6 +94,13 @@ server <- function(input, output, session) {
         Run = run,
         Status = status,
         Updated = format(updated, "%Y-%m-%d %H:%M"),
+
+        # ---- NEW: run overview metrics ----
+        Reads     = paste0(n_reads, "/", n_samples),
+        `H/N`     = paste0(n_hn, "/", n_samples),
+        Subtype   = paste0(n_subtype, "/", n_samples),
+        Nextclade = paste0(n_nextclade, "/", n_samples),
+
         MultiQC = ifelse(
           !is.na(multiqc_url),
           paste0('<a href="', multiqc_url, '" target="_blank">MultiQC</a>'),
@@ -160,20 +182,19 @@ server <- function(input, output, session) {
       show_cols <- c("sample_id","read_count","passed_reads",
                      "influenza_type","H","N","subtype",
                      "clade","subclade","qc_status","qc_score",
-                     "has_reads","has_subtyping","has_nextclade")
+                     "has_reads","has_hn","has_subtype","has_nextclade")
 
       disp <- df %>% select(any_of(show_cols))
 
       dt <- datatable(disp, options = list(pageLength = 25, autoWidth = TRUE), rownames = FALSE)
 
-      for (col in c("has_reads", "has_subtyping", "has_nextclade")) {
-        dt <- dt %>% formatStyle(col,
-                                 backgroundColor = styleEqual(c(TRUE, FALSE), c("#dff0d8", "#fcf8e3")),
-                                 fontWeight = "bold")
+      for (col in c("has_reads", "has_hn", "has_subtype", "has_nextclade")) {
+        if (col %in% names(disp)) {
+          dt <- dt %>% formatStyle(col,
+                                   backgroundColor = styleEqual(c(TRUE, FALSE), c("#dff0d8", "#fcf8e3")),
+                                   fontWeight = "bold")
+        }
       }
-      dt <- dt %>% formatStyle("passed_reads",
-                               backgroundColor = styleEqual(c(TRUE, FALSE), c("#dff0d8", "#f2dede")),
-                               fontWeight = "bold")
 
       dt
 

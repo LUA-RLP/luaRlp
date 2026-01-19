@@ -1,5 +1,6 @@
 # R/models.R
 
+# ---- Run listing (fast) ----
 list_runs_fast <- function(data_root, base_url) {
   if (!fs::dir_exists(data_root)) return(tibble::tibble())
   run_dirs <- fs::dir_ls(data_root, type = "directory", recurse = FALSE)
@@ -15,6 +16,7 @@ list_runs_fast <- function(data_root, base_url) {
         results_dir = NA_character_,
         updated = fs::file_info(rd)$modification_time,
         has_samplesheet = FALSE,
+        samplesheet_path = NA_character_,
         multiqc_path = NA_character_,
         multiqc_url = NA_character_
       ))
@@ -50,6 +52,7 @@ list_runs_fast <- function(data_root, base_url) {
   dplyr::bind_rows(rows) %>% dplyr::arrange(dplyr::desc(updated))
 }
 
+# ---- Build sample-level joined table for ONE run ----
 build_sample_table <- function(pipeline_dir, results_dir) {
   ss_path <- find_samplesheet_path(pipeline_dir, results_dir)
   ss <- read_samplesheet(ss_path)
@@ -69,9 +72,49 @@ build_sample_table <- function(pipeline_dir, results_dir) {
 
   df %>%
     dplyr::mutate(
-      has_reads = !is.na(read_count),
-      has_subtyping = !is.na(H) | !is.na(N) | !is.na(subtype) | !is.na(influenza_type),
+      has_reads = !is.na(read_count) & read_count > 0,
+      has_hn = !is.na(H) | !is.na(N),
+      has_subtype = !is.na(subtype) | !is.na(influenza_type),
       has_nextclade = !is.na(clade) | !is.na(subclade) | !is.na(qc_status),
       passed_reads = !is.na(read_count) & read_count > 0
     )
+}
+
+# ---- Cached run-level summary counts ----
+# Keyed by results_dir + mtime of results_dir
+.run_counts_cache <- new.env(parent = emptyenv())
+
+run_sample_counts_cached <- function(pipeline_dir, results_dir) {
+  if (is.na(results_dir) || !fs::dir_exists(results_dir)) {
+    return(tibble::tibble(
+      n_samples = 0, n_reads = 0, n_hn = 0, n_subtype = 0, n_nextclade = 0
+    ))
+  }
+
+  mtime <- tryCatch(fs::file_info(results_dir)$modification_time, error = function(e) NA)
+  cache_key <- paste0(results_dir, "::", as.character(mtime))
+
+  if (exists(cache_key, envir = .run_counts_cache, inherits = FALSE)) {
+    return(get(cache_key, envir = .run_counts_cache, inherits = FALSE))
+  }
+
+  # compute
+  df <- build_sample_table(pipeline_dir, results_dir)
+
+  out <- if (is.null(df) || nrow(df) == 0) {
+    tibble::tibble(
+      n_samples = 0, n_reads = 0, n_hn = 0, n_subtype = 0, n_nextclade = 0
+    )
+  } else {
+    tibble::tibble(
+      n_samples   = nrow(df),
+      n_reads     = sum(df$has_reads, na.rm = TRUE),
+      n_hn        = sum(df$has_hn, na.rm = TRUE),
+      n_subtype   = sum(df$has_subtype, na.rm = TRUE),
+      n_nextclade = sum(df$has_nextclade, na.rm = TRUE)
+    )
+  }
+
+  assign(cache_key, out, envir = .run_counts_cache)
+  out
 }
