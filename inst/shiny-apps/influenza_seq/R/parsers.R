@@ -34,6 +34,29 @@ find_nextclade_path <- function(results_dir) {
   NA_character_
 }
 
+normalize_nextclade_id <- function(x) {
+  x <- as.character(x)
+  x <- sub("\\s.*$", "", x)                         # cut off anything after first whitespace
+  x <- sub("\\.gz$", "", x, ignore.case = TRUE)
+  x <- sub("\\.(fast|f)q$", "", x, ignore.case = TRUE)
+  x <- sub("\\.(fasta|fa|fna)$", "", x, ignore.case = TRUE)
+
+  # common nf-flu / consensus naming patterns
+  x <- sub("\\.majority_consensus.*$", "", x, ignore.case = TRUE)
+  x <- sub("\\.consensus.*$", "", x, ignore.case = TRUE)
+  x <- sub("\\.(irma|bcftools|vadr)(\\..*)?$", "", x, ignore.case = TRUE)
+
+  # sometimes consensus names end with _consensus
+  x <- sub("_consensus.*$", "", x, ignore.case = TRUE)
+
+  # keep your existing paired-read normalization too (harmless here)
+  x <- normalize_id(x)
+
+  x
+}
+
+
+
 find_subtyping_path <- function(results_dir) {
   # prefer predictions over raw results
   candidates <- c(
@@ -116,7 +139,9 @@ parse_readcount <- function(rc_raw) {
     dplyr::select(sample_id, read_count)
 }
 
-parse_nextclade <- function(nx_raw) {
+parse_nextclade_with_key <- function(nx_raw, key_col = c("seqName", "sample")) {
+  key_col <- match.arg(key_col)
+
   empty <- tibble::tibble(
     sample_id = character(), clade = character(), subclade = character(),
     qc_status = character(), qc_score = numeric()
@@ -127,23 +152,22 @@ parse_nextclade <- function(nx_raw) {
 
   out <- nx_raw
 
-  # Prefer seqName as sample_id if present (most reliable join key)
-  if ("seqName" %in% names(out)) {
-    out <- dplyr::rename(out, sample_id = seqName)
-  } else {
-    out <- standardize_sample_id(out)
+  if (!(key_col %in% names(out))) {
+    dbg("parse_nextclade_with_key: missing key_col=", key_col, " -> returning empty")
+    return(empty)
   }
 
-  out <- dplyr::mutate(out, sample_id = normalize_id(sample_id))
+  out <- out %>%
+    dplyr::mutate(sample_id = normalize_nextclade_id(.data[[key_col]]))
 
-  # clade/subclade
+  # clade/subclade are already present in your logs
   if (!("clade" %in% names(out)) && "Clade" %in% names(out)) out <- dplyr::rename(out, clade = Clade)
   if (!("subclade" %in% names(out))) {
     sc <- names(out)[grepl("subclade|sub_clade", names(out), ignore.case = TRUE)][1]
     if (!is.na(sc)) out <- dplyr::rename(out, subclade = dplyr::all_of(sc))
   }
 
-  # qc
+  # QC fields (optional)
   qs <- names(out)[grepl("qc.*status|overallStatus", names(out), ignore.case = TRUE)][1]
   if (!is.na(qs) && !("qc_status" %in% names(out))) out <- dplyr::rename(out, qc_status = dplyr::all_of(qs))
   qsc <- names(out)[grepl("qc.*score|overallScore", names(out), ignore.case = TRUE)][1]
@@ -160,9 +184,10 @@ parse_nextclade <- function(nx_raw) {
     dplyr::filter(!is.na(sample_id) & sample_id != "") %>%
     dplyr::distinct(sample_id, .keep_all = TRUE)
 
-  dbg("parse_nextclade: parsed rows=", nrow(out))
+  dbg("parse_nextclade_with_key(", key_col, "): parsed rows=", nrow(out))
   out
 }
+
 
 
 

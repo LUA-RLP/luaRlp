@@ -60,7 +60,29 @@ build_sample_table <- function(pipeline_dir, results_dir) {
 
   rc <- parse_readcount(read_pass_readcount_raw(results_dir))
   sub <- parse_subtyping(read_subtyping_raw(results_dir))
-  nx  <- parse_nextclade(read_nextclade_raw(results_dir))
+
+  nx_raw <- read_nextclade_raw(results_dir)
+
+  nx_seq <- parse_nextclade_with_key(nx_raw, "seqName")
+  nx_sam <- parse_nextclade_with_key(nx_raw, "sample")
+
+  # choose the key that matches the most samplesheet IDs
+  ss_ids <- ss$sample_id
+
+  m_seq <- sum(nx_seq$sample_id %in% ss_ids, na.rm = TRUE)
+  m_sam <- sum(nx_sam$sample_id %in% ss_ids, na.rm = TRUE)
+
+  dbg("nextclade key match counts: seqName=", m_seq, " sample=", m_sam)
+
+  nx <- if (m_sam > m_seq) {
+    dbg("Using nextclade key: sample")
+    nx_sam
+  } else {
+    dbg("Using nextclade key: seqName")
+    nx_seq
+  }
+
+
 
   df <- ss %>%
     dplyr::select(sample_id) %>%
