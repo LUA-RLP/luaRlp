@@ -175,26 +175,17 @@ server <- function(input, output, session) {
       validate(need(!is.null(df) && nrow(df) > 0, "No readable samplesheet for this run."))
 
       if (!isTRUE(input$include_no_pass_runs)) {
-        validate(need(any(df$passed_reads, na.rm = TRUE),
+        validate(need(any(df$read_count > 0, na.rm = TRUE),
                       "This run has zero passed samples (per read_count). Enable the checkbox to include it."))
       }
 
-      show_cols <- c("sample_id","read_count","passed_reads",
+      show_cols <- c("sample_id","read_count",
                      "influenza_type","H","N","subtype",
-                     "clade","subclade","qc_status","qc_score",
-                     "has_reads","has_hn","has_subtype","has_nextclade")
+                     "clade","subclade","qc_status","qc_score")
 
       disp <- df %>% select(any_of(show_cols))
 
       dt <- datatable(disp, options = list(pageLength = 25, autoWidth = TRUE), rownames = FALSE)
-
-      for (col in c("has_reads", "has_hn", "has_subtype", "has_nextclade")) {
-        if (col %in% names(disp)) {
-          dt <- dt %>% formatStyle(col,
-                                   backgroundColor = styleEqual(c(TRUE, FALSE), c("#dff0d8", "#fcf8e3")),
-                                   fontWeight = "bold")
-        }
-      }
 
       dt
 
