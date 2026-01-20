@@ -263,6 +263,18 @@ parse_subtyping <- function(sub_raw) {
     if (!is.na(n_col)) out <- dplyr::rename(out, N = dplyr::all_of(n_col))
   }
 
+  # --- subtype: explicit mapping for your file ---
+  if (!("subtype" %in% names(out))) {
+    if ("Subtype Prediction" %in% names(out)) {
+      out <- dplyr::rename(out, subtype = `Subtype Prediction`)
+    } else if ("VADR Subtype" %in% names(out)) {
+      out <- dplyr::rename(out, subtype = `VADR Subtype`)
+    }
+  }
+
+  # Clean empty strings -> NA
+  if ("subtype" %in% names(out)) out$subtype <- dplyr::na_if(as.character(out$subtype), "")
+
   out <- ensure_cols(out, c("sample_id","influenza_type","H","N","subtype"))
 
   # derive from subtype if needed
@@ -270,6 +282,15 @@ parse_subtyping <- function(sub_raw) {
   if (all(is.na(out$H))) out$H <- stringr::str_extract(st, "H\\d+")
   if (all(is.na(out$N))) out$N <- stringr::str_extract(st, "N\\d+")
   if (all(is.na(out$influenza_type))) out$influenza_type <- stringr::str_extract(st, "^[AB]")
+
+  # If subtype still missing but H and N exist, build it (e.g. H5N1)
+  if (!("subtype" %in% names(out))) out$subtype <- NA_character_
+  out$subtype <- ifelse(
+    is.na(out$subtype) | out$subtype == "",
+    paste0(out$H, out$N),
+    out$subtype
+  )
+  out$subtype <- dplyr::na_if(out$subtype, "NA")
 
   out2 <- out %>%
     dplyr::transmute(
