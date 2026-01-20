@@ -74,8 +74,11 @@ read_subtyping_raw <- function(results_dir) {
   f <- find_subtyping_path(results_dir)
   if (is.na(f)) return(NULL)
   dbg("subtyping file: ", f)
-  suppressWarnings(readr::read_csv(f, show_col_types = FALSE))
+  x <- suppressWarnings(readr::read_csv(f, show_col_types = FALSE))
+  dbg("subtyping columns: ", paste(names(x), collapse = ","))
+  x
 }
+
 
 read_pass_readcount_raw <- function(results_dir) {
   f <- fs::path(results_dir, "read_count", "pass_read_count_samples_mqc.tsv")
@@ -114,39 +117,39 @@ parse_readcount <- function(rc_raw) {
 }
 
 parse_nextclade <- function(nx_raw) {
-  # fixed columns: sample_id, clade, subclade, qc_status, qc_score
-  if (is.null(nx_raw)) {
-    return(tibble::tibble(
-      sample_id = character(), clade = character(), subclade = character(),
-      qc_status = character(), qc_score = numeric()
-    ))
-  }
+  empty <- tibble::tibble(
+    sample_id = character(), clade = character(), subclade = character(),
+    qc_status = character(), qc_score = numeric()
+  )
+  if (is.null(nx_raw)) return(empty)
 
   dbg("nextclade columns: ", paste(names(nx_raw), collapse = ","))
 
-  out <- standardize_sample_id(nx_raw) %>%
-    dplyr::mutate(sample_id = normalize_id(sample_id))
+  out <- nx_raw
 
-  # clade column heuristics
-  if (!("clade" %in% names(out))) {
-    cc <- intersect(names(out), c("Clade", "clade"))
-    if (length(cc) >= 1) out <- dplyr::rename(out, clade = dplyr::all_of(cc[[1]]))
+  # Prefer seqName as sample_id if present (most reliable join key)
+  if ("seqName" %in% names(out)) {
+    out <- dplyr::rename(out, sample_id = seqName)
+  } else {
+    out <- standardize_sample_id(out)
   }
 
-  # subclade column heuristics (sometimes named differently)
+  out <- dplyr::mutate(out, sample_id = normalize_id(sample_id))
+
+  # clade/subclade
+  if (!("clade" %in% names(out)) && "Clade" %in% names(out)) out <- dplyr::rename(out, clade = Clade)
   if (!("subclade" %in% names(out))) {
-    sc <- names(out)[grepl("subclade|sub_clade", names(out), ignore.case = TRUE)]
-    if (length(sc) >= 1) out <- dplyr::rename(out, subclade = dplyr::all_of(sc[[1]]))
+    sc <- names(out)[grepl("subclade|sub_clade", names(out), ignore.case = TRUE)][1]
+    if (!is.na(sc)) out <- dplyr::rename(out, subclade = dplyr::all_of(sc))
   }
 
-  # QC status/score (common nextclade naming)
-  qs <- names(out)[grepl("qc.*status|overallStatus", names(out), ignore.case = TRUE)]
-  if (length(qs) >= 1 && !("qc_status" %in% names(out))) out <- dplyr::rename(out, qc_status = dplyr::all_of(qs[[1]]))
+  # qc
+  qs <- names(out)[grepl("qc.*status|overallStatus", names(out), ignore.case = TRUE)][1]
+  if (!is.na(qs) && !("qc_status" %in% names(out))) out <- dplyr::rename(out, qc_status = dplyr::all_of(qs))
+  qsc <- names(out)[grepl("qc.*score|overallScore", names(out), ignore.case = TRUE)][1]
+  if (!is.na(qsc) && !("qc_score" %in% names(out))) out <- dplyr::rename(out, qc_score = dplyr::all_of(qsc))
 
-  qsc <- names(out)[grepl("qc.*score|overallScore", names(out), ignore.case = TRUE)]
-  if (length(qsc) >= 1 && !("qc_score" %in% names(out))) out <- dplyr::rename(out, qc_score = dplyr::all_of(qsc[[1]]))
-
-  out <- ensure_cols(out, c("sample_id", "clade", "subclade", "qc_status", "qc_score")) %>%
+  out <- ensure_cols(out, c("sample_id","clade","subclade","qc_status","qc_score")) %>%
     dplyr::transmute(
       sample_id = as.character(sample_id),
       clade = as.character(clade),
@@ -157,43 +160,72 @@ parse_nextclade <- function(nx_raw) {
     dplyr::filter(!is.na(sample_id) & sample_id != "") %>%
     dplyr::distinct(sample_id, .keep_all = TRUE)
 
+  dbg("parse_nextclade: parsed rows=", nrow(out))
   out
 }
 
 
+
 parse_subtyping <- function(sub_raw) {
-  if (is.null(sub_raw)) {
-    return(tibble::tibble(
-      sample_id = character(), influenza_type = character(),
-      H = character(), N = character(), subtype = character()
-    ))
+  # fixed columns: sample_id, influenza_type, H, N, subtype
+  empty <- tibble::tibble(
+    sample_id = character(),
+    influenza_type = character(),
+    H = character(),
+    N = character(),
+    subtype = character()
+  )
+  if (is.null(sub_raw)) return(empty)
+
+  dbg("parse_subtyping: incoming cols: ", paste(names(sub_raw), collapse = ","))
+
+  out <- sub_raw
+
+  # If first column is unnamed, readr calls it ...1 — that's often the sample id
+  if (!("sample_id" %in% names(out)) &&
+      ("...1" %in% names(out))) {
+    out <- dplyr::rename(out, sample_id = `...1`)
   }
 
-  out <- standardize_sample_id(sub_raw) %>%
-    dplyr::mutate(sample_id = normalize_id(sample_id))
+  # Otherwise use our standard heuristics (sample_id/seqName/sample/...)
+  out <- standardize_sample_id(out)
+
+  # Still nothing? Fall back to first column as sample id
+  if (all(is.na(out$sample_id)) && ncol(out) >= 1) {
+    out$sample_id <- as.character(out[[1]])
+  }
+
+  out <- dplyr::mutate(out, sample_id = normalize_id(sample_id))
 
   nms <- names(out)
 
-  type_col <- intersect(nms, c("influenza_type", "type", "virus_type", "InfluenzaType"))
-  sub_col  <- intersect(nms, c("subtype", "subtype_prediction", "prediction", "Subtype"))
+  # influenza type
+  type_col <- intersect(nms, c("influenza_type", "type", "virus_type", "InfluenzaType", "virusType"))
+  if (length(type_col) >= 1 && !("influenza_type" %in% nms)) out <- dplyr::rename(out, influenza_type = dplyr::all_of(type_col[[1]]))
 
-  if (length(type_col) >= 1 && !("influenza_type" %in% names(out))) out <- dplyr::rename(out, influenza_type = dplyr::all_of(type_col[[1]]))
-  if (length(sub_col)  >= 1 && !("subtype" %in% names(out))) out <- dplyr::rename(out, subtype = dplyr::all_of(sub_col[[1]]))
+  # subtype (combined)
+  sub_col <- intersect(nms, c("subtype", "subtype_prediction", "prediction", "Subtype", "subtypePrediction"))
+  if (length(sub_col) >= 1 && !("subtype" %in% nms)) out <- dplyr::rename(out, subtype = dplyr::all_of(sub_col[[1]]))
 
-  h_col <- intersect(nms, c("H", "H_subtype", "HA", "ha_subtype", "H_type"))
-  n_col <- intersect(nms, c("N", "N_subtype", "NA", "na_subtype", "N_type"))
-  if (length(h_col) >= 1 && !("H" %in% names(out))) out <- dplyr::rename(out, H = dplyr::all_of(h_col[[1]]))
-  if (length(n_col) >= 1 && !("N" %in% names(out))) out <- dplyr::rename(out, N = dplyr::all_of(n_col[[1]]))
+  # H / N columns: be liberal (predictions file naming varies)
+  if (!("H" %in% nms)) {
+    h_col <- nms[grepl("(^H$)|H.*subtype|H.*pred|HA.*subtype|ha.*subtype", nms, ignore.case = TRUE)][1]
+    if (!is.na(h_col)) out <- dplyr::rename(out, H = dplyr::all_of(h_col))
+  }
+  if (!("N" %in% nms)) {
+    n_col <- nms[grepl("(^N$)|N.*subtype|N.*pred|NA.*subtype|na.*subtype", nms, ignore.case = TRUE)][1]
+    if (!is.na(n_col)) out <- dplyr::rename(out, N = dplyr::all_of(n_col))
+  }
 
-  out <- ensure_cols(out, c("sample_id", "influenza_type", "H", "N", "subtype"))
+  out <- ensure_cols(out, c("sample_id","influenza_type","H","N","subtype"))
 
-  # derive if possible
+  # derive from subtype if needed
   st <- as.character(out$subtype)
   if (all(is.na(out$H))) out$H <- stringr::str_extract(st, "H\\d+")
   if (all(is.na(out$N))) out$N <- stringr::str_extract(st, "N\\d+")
   if (all(is.na(out$influenza_type))) out$influenza_type <- stringr::str_extract(st, "^[AB]")
 
-  out %>%
+  out2 <- out %>%
     dplyr::transmute(
       sample_id = as.character(sample_id),
       influenza_type = as.character(influenza_type),
@@ -203,4 +235,8 @@ parse_subtyping <- function(sub_raw) {
     ) %>%
     dplyr::filter(!is.na(sample_id) & sample_id != "") %>%
     dplyr::distinct(sample_id, .keep_all = TRUE)
+
+  dbg("parse_subtyping: parsed rows=", nrow(out2))
+  out2
 }
+

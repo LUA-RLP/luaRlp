@@ -44,8 +44,13 @@ normalize_id <- function(x) {
 standardize_sample_id <- function(df) {
   if (is.null(df)) return(df)
   nms <- names(df)
-  cand <- intersect(nms, c("sample", "sample_id", "seqName", "name", "sequence_name", "SequenceName"))
-  if (length(cand) >= 1) df <- dplyr::rename(df, sample_id = dplyr::all_of(cand[[1]]))
-  if (!("sample_id" %in% names(df))) df$sample_id <- NA_character_
+  # Prefer seqName over sample if both exist (Nextclade case)
+  cand <- intersect(nms, c("sample_id", "seqName", "sample", "name", "sequence_name", "SequenceName"))
+  if (length(cand) >= 1) {
+    df <- dplyr::rename(df, sample_id = dplyr::all_of(cand[[1]]))
+  } else {
+    df$sample_id <- NA_character_
+  }
   dplyr::mutate(df, sample_id = as.character(sample_id))
 }
+
