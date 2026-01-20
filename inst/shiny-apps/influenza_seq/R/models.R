@@ -99,7 +99,8 @@ build_sample_table <- function(pipeline_dir, results_dir) {
       has_subtype = !is.na(subtype) | !is.na(influenza_type),
 
       # IMPORTANT: count nextclade only if clade/subclade exists
-      has_nextclade = !is.na(clade) | !is.na(subclade),
+      has_nextclade = (!is.na(clade) | !is.na(subclade)) &
+        (char(clade) > 0 | nchar(subclade) > 0 ),
 
       # optional: QC present even if clade/subclade missing
       has_nextclade_qc = !is.na(qc_status),

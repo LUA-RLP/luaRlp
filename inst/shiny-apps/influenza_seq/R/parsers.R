@@ -173,18 +173,39 @@ parse_nextclade_with_key <- function(nx_raw, key_col = c("seqName", "sample")) {
   qsc <- names(out)[grepl("qc.*score|overallScore", names(out), ignore.case = TRUE)][1]
   if (!is.na(qsc) && !("qc_score" %in% names(out))) out <- dplyr::rename(out, qc_score = dplyr::all_of(qsc))
 
-  out <- ensure_cols(out, c("sample_id","clade","subclade","qc_status","qc_score")) %>%
-    dplyr::transmute(
-      sample_id = as.character(sample_id),
-      clade = as.character(clade),
-      subclade = as.character(subclade),
-      qc_status = as.character(qc_status),
-      qc_score = suppressWarnings(as.numeric(qc_score))
-    ) %>%
-    dplyr::filter(!is.na(sample_id) & sample_id != "") %>%
-    dplyr::distinct(sample_id, .keep_all = TRUE)
+  out <- ensure_cols(out, c("sample_id","clade","subclade","qc_status","qc_score","dataset_name","coverage"))
 
-  dbg("parse_nextclade_with_key(", key_col, "): parsed rows=", nrow(out))
+  out <- out %>%
+    dplyr::transmute(
+      sample_id   = as.character(sample_id),
+      dataset_name = as.character(dataset_name),
+      clade       = dplyr::na_if(as.character(clade), ""),
+      subclade    = dplyr::na_if(as.character(subclade), ""),
+      qc_status   = as.character(qc_status),
+      qc_score    = suppressWarnings(as.numeric(qc_score)),
+      coverage    = suppressWarnings(as.numeric(coverage))
+    ) %>%
+    dplyr::filter(!is.na(sample_id) & sample_id != "")
+
+  # ---- NEW: choose best row per sample (prefer HA, then any clade, then coverage) ----
+  out <- out %>%
+    dplyr::mutate(
+      is_ha = grepl("/ha(\\b|/)", dataset_name, ignore.case = TRUE) | grepl("segment4", dataset_name, ignore.case = TRUE),
+      is_na = grepl("/na(\\b|/)", dataset_name, ignore.case = TRUE) | grepl("segment6", dataset_name, ignore.case = TRUE),
+      has_clade = !is.na(clade) | !is.na(subclade)
+    ) %>%
+    dplyr::arrange(
+      dplyr::desc(has_clade),
+      dplyr::desc(is_ha),
+      dplyr::desc(is_na),
+      dplyr::desc(coverage)
+    ) %>%
+    dplyr::group_by(sample_id) %>%
+    dplyr::slice(1) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(sample_id, clade, subclade, qc_status, qc_score)
+
+  dbg("parse_nextclade_with_key(", key_col, "): parsed unique samples=", nrow(out))
   out
 }
 
