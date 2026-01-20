@@ -11,15 +11,69 @@ read_samplesheet <- function(samplesheet_path) {
     dplyr::distinct(sample_id, .keep_all = TRUE)
 }
 
+find_first_existing <- function(paths) {
+  hit <- paths[fs::file_exists(paths)][1]
+  if (length(hit) == 0 || is.na(hit)) return(NA_character_)
+  hit
+}
+
+find_nextclade_path <- function(results_dir) {
+  candidates <- c(
+    fs::path(results_dir, "nextclade", "nextclade.tsv"),
+    fs::path(results_dir, "nextclade", "nextclade.csv")
+  )
+  hit <- find_first_existing(candidates)
+  if (!is.na(hit)) return(hit)
+
+  # fallback: any tsv/csv in nextclade dir
+  nd <- fs::path(results_dir, "nextclade")
+  if (fs::dir_exists(nd)) {
+    any <- fs::dir_ls(nd, type = "file", glob = "*.{tsv,csv}", fail = FALSE)
+    if (length(any) > 0) return(any[[1]])
+  }
+  NA_character_
+}
+
+find_subtyping_path <- function(results_dir) {
+  # prefer predictions over raw results
+  candidates <- c(
+    fs::path(results_dir, "subtyping_report", "subtype_predictions.csv"),
+    fs::path(results_dir, "subtyping_report", "subtype_results.csv"),
+    # sometimes under irma
+    fs::path(results_dir, "irma", "subtyping_report", "subtype_predictions.csv"),
+    fs::path(results_dir, "irma", "subtyping_report", "subtype_results.csv")
+  )
+  hit <- find_first_existing(candidates)
+  if (!is.na(hit)) return(hit)
+
+  # fallback: anything plausible in subtyping_report dirs
+  sd1 <- fs::path(results_dir, "subtyping_report")
+  if (fs::dir_exists(sd1)) {
+    any <- fs::dir_ls(sd1, type="file", glob="*.csv", fail=FALSE)
+    if (length(any) > 0) return(any[[1]])
+  }
+  sd2 <- fs::path(results_dir, "irma", "subtyping_report")
+  if (fs::dir_exists(sd2)) {
+    any <- fs::dir_ls(sd2, type="file", glob="*.csv", fail=FALSE)
+    if (length(any) > 0) return(any[[1]])
+  }
+  NA_character_
+}
+
 read_nextclade_raw <- function(results_dir) {
-  f <- fs::path(results_dir, "nextclade", "nextclade.tsv")
-  if (!fs::file_exists(f)) return(NULL)
+  f <- find_nextclade_path(results_dir)
+  if (is.na(f)) return(NULL)
+  dbg("nextclade file: ", f)
+  if (grepl("\\.csv$", f, ignore.case = TRUE)) {
+    return(suppressWarnings(readr::read_csv(f, show_col_types = FALSE)))
+  }
   suppressWarnings(readr::read_tsv(f, show_col_types = FALSE))
 }
 
 read_subtyping_raw <- function(results_dir) {
-  f <- fs::path(results_dir, "subtyping_report", "subtype_results.csv")
-  if (!fs::file_exists(f)) return(NULL)
+  f <- find_subtyping_path(results_dir)
+  if (is.na(f)) return(NULL)
+  dbg("subtyping file: ", f)
   suppressWarnings(readr::read_csv(f, show_col_types = FALSE))
 }
 
@@ -60,6 +114,7 @@ parse_readcount <- function(rc_raw) {
 }
 
 parse_nextclade <- function(nx_raw) {
+  # fixed columns: sample_id, clade, subclade, qc_status, qc_score
   if (is.null(nx_raw)) {
     return(tibble::tibble(
       sample_id = character(), clade = character(), subclade = character(),
@@ -67,22 +122,28 @@ parse_nextclade <- function(nx_raw) {
     ))
   }
 
+  dbg("nextclade columns: ", paste(names(nx_raw), collapse = ","))
+
   out <- standardize_sample_id(nx_raw) %>%
     dplyr::mutate(sample_id = normalize_id(sample_id))
 
+  # clade column heuristics
   if (!("clade" %in% names(out))) {
-    cc <- intersect(names(out), c("Clade"))
+    cc <- intersect(names(out), c("Clade", "clade"))
     if (length(cc) >= 1) out <- dplyr::rename(out, clade = dplyr::all_of(cc[[1]]))
   }
+
+  # subclade column heuristics (sometimes named differently)
   if (!("subclade" %in% names(out))) {
-    sc <- intersect(names(out), c("Subclade"))
+    sc <- names(out)[grepl("subclade|sub_clade", names(out), ignore.case = TRUE)]
     if (length(sc) >= 1) out <- dplyr::rename(out, subclade = dplyr::all_of(sc[[1]]))
   }
 
-  qs <- intersect(names(out), c("qc.overallStatus", "qc_overallStatus", "overallStatus"))
+  # QC status/score (common nextclade naming)
+  qs <- names(out)[grepl("qc.*status|overallStatus", names(out), ignore.case = TRUE)]
   if (length(qs) >= 1 && !("qc_status" %in% names(out))) out <- dplyr::rename(out, qc_status = dplyr::all_of(qs[[1]]))
 
-  qsc <- intersect(names(out), c("qc.overallScore", "qc_overallScore", "overallScore"))
+  qsc <- names(out)[grepl("qc.*score|overallScore", names(out), ignore.case = TRUE)]
   if (length(qsc) >= 1 && !("qc_score" %in% names(out))) out <- dplyr::rename(out, qc_score = dplyr::all_of(qsc[[1]]))
 
   out <- ensure_cols(out, c("sample_id", "clade", "subclade", "qc_status", "qc_score")) %>%
@@ -98,6 +159,7 @@ parse_nextclade <- function(nx_raw) {
 
   out
 }
+
 
 parse_subtyping <- function(sub_raw) {
   if (is.null(sub_raw)) {

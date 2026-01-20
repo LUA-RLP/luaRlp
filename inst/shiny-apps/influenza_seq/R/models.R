@@ -75,7 +75,13 @@ build_sample_table <- function(pipeline_dir, results_dir) {
       has_reads = !is.na(read_count) & read_count > 0,
       has_hn = !is.na(H) | !is.na(N),
       has_subtype = !is.na(subtype) | !is.na(influenza_type),
-      has_nextclade = !is.na(clade) | !is.na(subclade) | !is.na(qc_status),
+
+      # IMPORTANT: count nextclade only if clade/subclade exists
+      has_nextclade = !is.na(clade) | !is.na(subclade),
+
+      # optional: QC present even if clade/subclade missing
+      has_nextclade_qc = !is.na(qc_status),
+
       passed_reads = !is.na(read_count) & read_count > 0
     )
 }
