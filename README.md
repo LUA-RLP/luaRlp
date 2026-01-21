@@ -29,6 +29,8 @@ Das Paket Laden mit
 library(luaRlp)
 ```
 
+    ## survnet.dsn ist gesetzt auf: SurvNet_datenbank
+
 Das Paket hat mehrere wichtige Funktionen für unsere Amtsaufgaben:
 
 - es kann epidemiologische Daten aus SurvNet zu unseren Labornummern
