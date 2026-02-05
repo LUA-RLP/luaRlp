@@ -11,27 +11,51 @@ source("R/io_discovery.R", local = TRUE)
 source("R/parsers.R", local = TRUE)
 source("R/models.R", local = TRUE)
 
-ui <- fluidPage(
-  titlePanel("NF_FLU Influenza Dashboard"),
-  fluidRow(
-    column(
-      12,
-      h3("Runs"),
+ui <- navbarPage(
+  "NF_FLU Influenza Dashboard",
+
+  tabPanel(
+    "Runs",
+    fluidPage(
       fluidRow(
-        column(6, checkboxInput("include_empty_runs",
-                                "Include runs without any samples (missing/empty samplesheet)", FALSE)),
-        column(6, checkboxInput("include_no_pass_runs",
-                                "Include runs without any quality-passed samples (applies after selecting a run)", FALSE))
-      ),
-      DTOutput("runs_tbl"),
-      hr(),
-      uiOutput("run_header"),
-      DTOutput("samples_tbl"),
-      hr(),
-      tags$div(style = "color:#666; font-size:12px;", "App author: Emanuel Heitlinger")
+        column(
+          12,
+          h3("Runs"),
+          fluidRow(
+            column(6, checkboxInput("include_empty_runs",
+                                    "Include runs without any samples (missing/empty samplesheet)", FALSE)),
+            column(6, checkboxInput("include_no_pass_runs",
+                                    "Include runs without any quality-passed samples (applies after selecting a run)", FALSE))
+          ),
+          DTOutput("runs_tbl"),
+          hr(),
+          uiOutput("run_header"),
+          DTOutput("samples_tbl"),
+          hr(),
+          tags$div(style = "color:#666; font-size:12px;", "App author: Emanuel Heitlinger")
+        )
+      )
+    )
+  ),
+
+  tabPanel(
+    "Epidemiology",
+    fluidPage(
+      fluidRow(
+        column(
+          12,
+          h3("Epidemiology"),
+          tags$p(style="color:#666;",
+                 "Counts are aggregated across all runs currently visible under the Run filters."),
+          actionButton("epi_refresh", "Refresh now"),
+          br(), br(),
+          DTOutput("epi_tbl")
+        )
+      )
     )
   )
 )
+
 
 server <- function(input, output, session) {
 
@@ -61,6 +85,52 @@ server <- function(input, output, session) {
     if (!isTRUE(input$include_empty_runs)) runs <- runs %>% filter(has_samplesheet)
     runs
   })
+
+epi_data <- reactive({
+  runs <- filtered_runs()
+  if (nrow(runs) == 0) return(tibble::tibble())
+
+  # Build sample tables per run and bind
+  all_samples <- purrr::pmap_dfr(
+    list(runs$pipeline_dir, runs$results_dir, runs$run),
+    function(pipeline_dir, results_dir, run_name) {
+      tryCatch({
+        df <- build_sample_table(pipeline_dir, results_dir)
+        if (is.null(df) || nrow(df) == 0) return(tibble::tibble())
+        df %>%
+          mutate(run = run_name)
+      }, error = function(e) {
+        dbg("epi build_sample_table error for run ", run_name, ": ", conditionMessage(e))
+        tibble::tibble()
+      })
+    }
+  )
+
+  if (nrow(all_samples) == 0) return(tibble::tibble())
+
+  # Minimal aggregation: count by clade/subclade
+  out <- all_samples %>%
+    mutate(
+      clade = ifelse(is.na(clade) | clade == "", NA_character_, as.character(clade)),
+      subclade = ifelse(is.na(subclade) | subclade == "", NA_character_, as.character(subclade))
+    ) %>%
+    filter(!is.na(clade) | !is.na(subclade)) %>%
+    group_by(clade, subclade) %>%
+    summarise(
+      n_samples = n_distinct(sample_id),
+      n_runs = n_distinct(run),
+      .groups = "drop"
+    ) %>%
+    arrange(desc(n_samples))
+
+  out
+})
+
+observeEvent(input$epi_refresh, {
+  # just triggers reactivity; useful when you want manual refresh
+  dbg("epi_refresh clicked")
+})
+
 
   output$runs_tbl <- renderDT({
     runs <- filtered_runs()
@@ -204,6 +274,63 @@ server <- function(input, output, session) {
       )
     })
   })
+
+# ---- Epidemiology ----
+epi_data <- reactive({
+  runs <- filtered_runs()
+  if (nrow(runs) == 0) return(tibble::tibble())
+
+  all_samples <- purrr::pmap_dfr(
+    list(runs$pipeline_dir, runs$results_dir, runs$run),
+    function(pipeline_dir, results_dir, run_name) {
+      tryCatch({
+        df <- build_sample_table(pipeline_dir, results_dir)
+        if (is.null(df) || nrow(df) == 0) return(tibble::tibble())
+        df %>% mutate(run = run_name)
+      }, error = function(e) {
+        dbg("epi build_sample_table error for run ", run_name, ": ", conditionMessage(e))
+        tibble::tibble()
+      })
+    }
+  )
+
+  if (nrow(all_samples) == 0) return(tibble::tibble())
+
+  all_samples %>%
+    mutate(
+      clade = ifelse(is.na(clade) | clade == "", NA_character_, as.character(clade)),
+      subclade = ifelse(is.na(subclade) | subclade == "", NA_character_, as.character(subclade))
+    ) %>%
+    filter(!is.na(clade) | !is.na(subclade)) %>%
+    group_by(clade, subclade) %>%
+    summarise(
+      n_samples = n_distinct(sample_id),
+      n_runs = n_distinct(run),
+      .groups = "drop"
+    ) %>%
+    arrange(desc(n_samples))
+})
+
+output$epi_tbl <- renderDT({
+  df <- epi_data()
+  validate(need(nrow(df) > 0, "No clade/subclade data found (yet)."))
+
+  disp <- df %>%
+    transmute(
+      Clade = dplyr::coalesce(clade, "—"),
+      Subclade = dplyr::coalesce(subclade, "—"),
+      `#Samples` = n_samples,
+      `#Runs` = n_runs
+    )
+
+  datatable(
+    disp,
+    rownames = FALSE,
+    options = list(pageLength = 25, autoWidth = TRUE, order = list(list(2, "desc")))
+  )
+})
+
+
 }
 
 shinyApp(ui, server)
