@@ -60,28 +60,18 @@ build_sample_table <- function(pipeline_dir, results_dir) {
 
   rc <- parse_readcount(read_pass_readcount_raw(results_dir))
   sub <- parse_subtyping(read_subtyping_raw(results_dir))
-
   nx_raw <- read_nextclade_raw(results_dir)
 
-  nx_seq <- parse_nextclade_with_key(nx_raw, "seqName")
-  nx_sam <- parse_nextclade_with_key(nx_raw, "sample")
+    # NEW: reduce nextclade.tsv (multi-row per sample/segment) to 1 row per sample_id,
+    # preferring the HA segment for clade/subclade and QC.
+    nx <- parse_nextclade_ha(nx_raw)
 
-  # choose the key that matches the most samplesheet IDs
-  ss_ids <- ss$sample_id
-
-  m_seq <- sum(nx_seq$sample_id %in% ss_ids, na.rm = TRUE)
-  m_sam <- sum(nx_sam$sample_id %in% ss_ids, na.rm = TRUE)
-
-  dbg("nextclade key match counts: seqName=", m_seq, " sample=", m_sam)
-
-  nx <- if (m_sam > m_seq) {
-    dbg("Using nextclade key: sample")
-    nx_sam
-  } else {
-    dbg("Using nextclade key: seqName")
-    nx_seq
-  }
-
+    # optional debug: how many samples got clade/subclade
+    ss_ids <- ss$sample_id
+    dbg("nextclade (HA) rows=", nrow(nx),
+    " matching samplesheet=", sum(nx$sample_id %in% ss_ids, na.rm = TRUE),
+    " with clade=", sum(!is.na(nx$clade) & nzchar(nx$clade), na.rm = TRUE),
+    " with subclade=", sum(!is.na(nx$subclade) & nzchar(nx$subclade), na.rm = TRUE))
 
 
   df <- ss %>%
@@ -90,8 +80,10 @@ build_sample_table <- function(pipeline_dir, results_dir) {
     dplyr::left_join(sub, by = "sample_id") %>%
     dplyr::left_join(nx,  by = "sample_id")
 
-  df <- ensure_cols(df, c("read_count","influenza_type","H","N","subtype","clade","subclade","qc_status","qc_score"))
-
+df <- ensure_cols(df, c(
+  "read_count","influenza_type","H","N","subtype",
+  "clade","subclade","qc_status","qc_score","coverage"
+))
   df %>%
     dplyr::mutate(
       has_reads = !is.na(read_count) & read_count > 0,

@@ -292,4 +292,82 @@ parse_subtyping <- function(sub_raw) {
   out2
 }
 
+parse_nextclade_ha <- function(next_raw) {
+  empty <- tibble::tibble(
+    sample_id = character(),
+    clade = character(),
+    subclade = character(),
+    qc_status = character(),
+    qc_score = numeric(),
+    coverage = numeric()
+  )
+  if (is.null(next_raw) || nrow(next_raw) == 0) return(empty)
+
+  dbg("parse_nextclade_ha: incoming cols: ", paste(names(next_raw), collapse = ","))
+
+  x <- next_raw
+
+  # Key column: sample id is in `sample`
+  if (!("sample" %in% names(x))) return(empty)
+  x <- dplyr::mutate(x, sample_id = normalize_id(.data$sample))
+
+  # Segment detection: prefer seqName, fallback to dataset_name
+  seg <- rep(NA_character_, nrow(x))
+  if ("seqName" %in% names(x)) {
+    seg <- stringr::str_extract(x$seqName, "(PB2|PB1|PA|HA|NP|NA|M|NS)")
+  }
+  if (all(is.na(seg)) && "dataset_name" %in% names(x)) {
+    seg <- toupper(stringr::str_extract(x$dataset_name, "(pb2|pb1|pa|ha|np|na|m|ns)"))
+  }
+  x$segment <- seg
+
+  # Normalise columns we care about (they exist in your file)
+  get_chr <- function(col) if (col %in% names(x)) dplyr::na_if(as.character(x[[col]]), "") else NA_character_
+  get_num <- function(col) if (col %in% names(x)) suppressWarnings(as.numeric(x[[col]])) else NA_real_
+
+  # We keep the "classic" clade/subclade first, but also prefer "short-clade" if present
+  # because in many flu datasets that’s what people *actually* report (e.g. 2.3.4.4b).
+  x <- dplyr::mutate(
+    x,
+    clade_raw      = get_chr("clade"),
+    subclade_raw   = get_chr("subclade"),
+    short_clade    = get_chr("short-clade"),
+    proposed_sub   = get_chr("proposedSubclade"),
+    qc_status_raw  = get_chr("qc.overallStatus"),
+    qc_score_raw   = get_num("qc.overallScore"),
+    coverage_raw   = get_num("coverage")
+  )
+
+  # Choose the HA row if available, otherwise fallback to the row that has any clade info
+  # (useful for weird/incomplete runs)
+  pick_one <- x %>%
+    dplyr::filter(!is.na(sample_id) & sample_id != "") %>%
+    dplyr::group_by(sample_id) %>%
+    dplyr::arrange(
+      dplyr::desc(segment == "HA"),
+      dplyr::desc(!is.na(short_clade) | !is.na(clade_raw) | !is.na(subclade_raw)),
+      dplyr::desc(!is.na(qc_status_raw)),
+      .by_group = TRUE
+    ) %>%
+    dplyr::slice(1) %>%
+    dplyr::ungroup()
+
+  # Final reported values:
+  # - clade: prefer short-clade (often what you want to show), otherwise clade
+  # - subclade: prefer proposedSubclade, otherwise subclade
+  out <- pick_one %>%
+    dplyr::transmute(
+      sample_id = as.character(sample_id),
+      clade     = dplyr::coalesce(short_clade, clade_raw),
+      subclade  = dplyr::coalesce(proposed_sub, subclade_raw),
+      qc_status = as.character(qc_status_raw),
+      qc_score  = as.numeric(qc_score_raw),
+      coverage  = as.numeric(coverage_raw)
+    )
+
+  dbg("parse_nextclade_ha: parsed rows=", nrow(out))
+  out
+}
+
+
 
