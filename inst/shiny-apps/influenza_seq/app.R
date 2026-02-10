@@ -38,23 +38,42 @@ ui <- navbarPage(
     )
   ),
 
-  tabPanel(
-    "Epidemiology",
-    fluidPage(
-      fluidRow(
-        column(
-          12,
-          h3("Epidemiology"),
-          tags$p(style="color:#666;",
-                 "Counts are aggregated across all runs currently visible under the Run filters."),
-          actionButton("epi_refresh", "Refresh now"),
-          br(), br(),
-          DTOutput("epi_tbl")
-        )
+tabPanel(
+  "Epidemiology",
+  fluidPage(
+    fluidRow(
+      column(
+        12,
+        h3("Epidemiology"),
+        tags$p(style="color:#666;",
+               "Counts aggregated across selected runs and time range."),
+
+        fluidRow(
+          column(
+            6,
+            uiOutput("epi_run_picker")
+          ),
+          column(
+            6,
+            dateRangeInput(
+              "epi_daterange",
+              "Run updated date range",
+              start = Sys.Date() - 30,
+              end = Sys.Date(),
+              format = "yyyy-mm-dd"
+            )
+          )
+        ),
+
+        br(),
+        DTOutput("epi_tbl"),
+        hr(),
+        tags$div(style = "color:#666; font-size:12px;", "App author: Emanuel Heitlinger")
       )
     )
   )
 )
+
 
 
 server <- function(input, output, session) {
@@ -86,11 +105,47 @@ server <- function(input, output, session) {
     runs
   })
 
-epi_data <- reactive({
+output$epi_run_picker <- renderUI({
   runs <- filtered_runs()
+  choices <- runs$run
+  # default: all runs
+  selectInput(
+    "epi_runs",
+    "Runs to include",
+    choices = choices,
+    selected = choices,
+    multiple = TRUE
+  )
+})
+
+epi_runs_filtered <- reactive({
+  runs <- filtered_runs()
+  if (nrow(runs) == 0) return(runs)
+
+  # filter by run selection
+  sel <- input$epi_runs
+  if (!is.null(sel) && length(sel) > 0) {
+    runs <- runs %>% dplyr::filter(.data$run %in% sel)
+  } else {
+    # if user deselects everything: show nothing
+    return(runs[0, , drop = FALSE])
+  }
+
+  # filter by date range (based on runs$updated)
+  dr <- input$epi_daterange
+  if (!is.null(dr) && length(dr) == 2 && !any(is.na(dr))) {
+    start <- as.POSIXct(dr[1], tz = "Europe/Berlin")
+    end   <- as.POSIXct(dr[2] + 1, tz = "Europe/Berlin") # inclusive end date
+    runs <- runs %>% dplyr::filter(.data$updated >= start, .data$updated < end)
+  }
+
+  runs
+})
+
+epi_data <- reactive({
+  runs <- epi_runs_filtered()
   if (nrow(runs) == 0) return(tibble::tibble())
 
-  # Build sample tables per run and bind
   all_samples <- purrr::pmap_dfr(
     list(runs$pipeline_dir, runs$results_dir, runs$run),
     function(pipeline_dir, results_dir, run_name) {
@@ -108,23 +163,23 @@ epi_data <- reactive({
 
   if (nrow(all_samples) == 0) return(tibble::tibble())
 
-  # Minimal aggregation: count by clade/subclade
-  out <- all_samples %>%
+  all_samples %>%
     mutate(
-      clade = ifelse(is.na(clade) | clade == "", NA_character_, as.character(clade)),
+      subtype  = ifelse(is.na(subtype)  | subtype  == "", NA_character_, as.character(subtype)),
+      clade    = ifelse(is.na(clade)    | clade    == "", NA_character_, as.character(clade)),
       subclade = ifelse(is.na(subclade) | subclade == "", NA_character_, as.character(subclade))
     ) %>%
-    filter(!is.na(clade) | !is.na(subclade)) %>%
-    group_by(clade, subclade) %>%
+    # keep anything that has at least SOME epi signal
+    filter(!is.na(subtype) | !is.na(clade) | !is.na(subclade)) %>%
+    group_by(subtype, clade, subclade) %>%
     summarise(
       n_samples = n_distinct(sample_id),
       n_runs = n_distinct(run),
       .groups = "drop"
     ) %>%
     arrange(desc(n_samples))
-
-  out
 })
+
 
 observeEvent(input$epi_refresh, {
   # just triggers reactivity; useful when you want manual refresh
@@ -311,12 +366,13 @@ epi_data <- reactive({
     arrange(desc(n_samples))
 })
 
-output$epi_tbl <- renderDT({
+ooutput$epi_tbl <- renderDT({
   df <- epi_data()
-  validate(need(nrow(df) > 0, "No clade/subclade data found (yet)."))
+  validate(need(nrow(df) > 0, "No subtype/clade/subclade data found for the current selection."))
 
   disp <- df %>%
     transmute(
+      Subtype = dplyr::coalesce(subtype, "—"),
       Clade = dplyr::coalesce(clade, "—"),
       Subclade = dplyr::coalesce(subclade, "—"),
       `#Samples` = n_samples,
@@ -326,7 +382,7 @@ output$epi_tbl <- renderDT({
   datatable(
     disp,
     rownames = FALSE,
-    options = list(pageLength = 25, autoWidth = TRUE, order = list(list(2, "desc")))
+    options = list(pageLength = 25, autoWidth = TRUE, order = list(list(3, "desc")))
   )
 })
 
