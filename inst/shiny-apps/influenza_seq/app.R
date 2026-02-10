@@ -73,7 +73,7 @@ tabPanel(
     )
   )
 )
-
+)
 
 
 server <- function(input, output, session) {
@@ -330,43 +330,7 @@ observeEvent(input$epi_refresh, {
     })
   })
 
-# ---- Epidemiology ----
-epi_data <- reactive({
-  runs <- filtered_runs()
-  if (nrow(runs) == 0) return(tibble::tibble())
-
-  all_samples <- purrr::pmap_dfr(
-    list(runs$pipeline_dir, runs$results_dir, runs$run),
-    function(pipeline_dir, results_dir, run_name) {
-      tryCatch({
-        df <- build_sample_table(pipeline_dir, results_dir)
-        if (is.null(df) || nrow(df) == 0) return(tibble::tibble())
-        df %>% mutate(run = run_name)
-      }, error = function(e) {
-        dbg("epi build_sample_table error for run ", run_name, ": ", conditionMessage(e))
-        tibble::tibble()
-      })
-    }
-  )
-
-  if (nrow(all_samples) == 0) return(tibble::tibble())
-
-  all_samples %>%
-    mutate(
-      clade = ifelse(is.na(clade) | clade == "", NA_character_, as.character(clade)),
-      subclade = ifelse(is.na(subclade) | subclade == "", NA_character_, as.character(subclade))
-    ) %>%
-    filter(!is.na(clade) | !is.na(subclade)) %>%
-    group_by(clade, subclade) %>%
-    summarise(
-      n_samples = n_distinct(sample_id),
-      n_runs = n_distinct(run),
-      .groups = "drop"
-    ) %>%
-    arrange(desc(n_samples))
-})
-
-ooutput$epi_tbl <- renderDT({
+output$epi_tbl <- renderDT({
   df <- epi_data()
   validate(need(nrow(df) > 0, "No subtype/clade/subclade data found for the current selection."))
 
