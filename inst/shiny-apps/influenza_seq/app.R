@@ -252,33 +252,52 @@ epi_data <- reactive({
   x <- epi_samples()
   if (nrow(x) == 0) return(tibble::tibble())
 
-  # helper: first non-NA value
-  first_non_na <- function(v) {
-    v <- v[!is.na(v) & v != ""]
+  # first non-NA helper that works for ANY type
+  first_non_na_any <- function(v) {
+    v <- v[!is.na(v)]
+    if (length(v) == 0) return(NA)
+    v[[1]]
+  }
+
+  # for character fields: ignore empty strings too
+  first_non_empty_chr <- function(v) {
+    v <- as.character(v)
+    v <- v[!is.na(v) & nzchar(v)]
     if (length(v) == 0) return(NA_character_)
-    as.character(v[[1]])
+    v[[1]]
+  }
+
+  # robustly get first Date (keeps Date class)
+  first_date <- function(v) {
+    v <- v[!is.na(v)]
+    if (length(v) == 0) return(as.Date(NA))
+    as.Date(v[[1]])
+  }
+
+  # minimal mojibake repair (turns "mÃ¤nnlich" -> "männlich")
+  fix_mojibake <- function(v) {
+    v <- as.character(v)
+    out <- iconv(v, from = "latin1", to = "UTF-8")
+    # keep original if iconv failed
+    ifelse(is.na(out), v, out)
   }
 
   x %>%
-    dplyr::mutate(
-      sample_md5 = as.character(sample_md5),
-      run = as.character(run)
-    ) %>%
-    dplyr::filter(!is.na(sample_md5) & sample_md5 != "") %>%
+    dplyr::filter(!is.na(sample_md5) & nzchar(sample_md5)) %>%
     dplyr::group_by(sample_md5) %>%
     dplyr::summarise(
-      runs = paste(sort(unique(run)), collapse = ", "),
+      runs  = paste(sort(unique(as.character(run))), collapse = ", "),
       n_runs = dplyr::n_distinct(run),
 
-      Probenahmedatum = suppressWarnings(as.Date(first_non_na(Probenahmedatum))),
-      Geburtsmonat    = first_non_na(Geburtsmonat),
-      Geburtsjahr     = first_non_na(Geburtsjahr),
-      Geschlecht      = first_non_na(Geschlecht),
-      Einsender       = first_non_na(Einsender),
+      Probenahmedatum = first_date(Probenahmedatum),
+      Geburtsmonat    = first_non_empty_chr(Geburtsmonat),
+      Geburtsjahr     = first_non_empty_chr(Geburtsjahr),
+      Geschlecht      = fix_mojibake(first_non_empty_chr(Geschlecht)),
+      Einsender       = fix_mojibake(first_non_empty_chr(Einsender)),
 
-      subtype  = first_non_na(subtype),
-      clade    = first_non_na(clade),
-      subclade = first_non_na(subclade),
+      subtype  = first_non_empty_chr(subtype),
+      clade    = first_non_empty_chr(clade),
+      subclade = first_non_empty_chr(subclade),
 
       .groups = "drop"
     ) %>%
@@ -472,12 +491,14 @@ output$epi_line_tbl <- renderDT({
   datatable(
     disp,
     rownames = FALSE,
-    options = list(pageLength = 25, autoWidth = TRUE, scrollX = TRUE)
+    options = list(
+      pageLength = 25,
+      autoWidth = FALSE,
+      scrollX = TRUE,
+      order = list(list(10, "desc"))  # #Runs descending
+    )
   )
 })
-
-
-  
 }
 
 shinyApp(ui, server)
