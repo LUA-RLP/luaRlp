@@ -7,6 +7,7 @@ library(DT)
 
 source("R/config.R", local = TRUE)
 source("R/utils.R", local = TRUE)
+source("R/sure_link.R", local = TRUE) 
 source("R/io_discovery.R", local = TRUE)
 source("R/parsers.R", local = TRUE)
 source("R/models.R", local = TRUE)
@@ -64,6 +65,19 @@ tabPanel(
             )
           )
         ),
+
+   # >>> ADD THIS BLOCK (Epidemiology-only filter) <<<
+        fluidRow(
+          column(
+            12,
+            checkboxInput(
+              "epi_only_sure",
+              "Zeige nur SURE Proben",
+              value = TRUE
+            )
+          )
+        ),
+
 
         br(),
         DTOutput("epi_tbl"),
@@ -145,6 +159,15 @@ epi_runs_filtered <- reactive({
 epi_data <- reactive({
   runs <- epi_runs_filtered()
   if (nrow(runs) == 0) return(tibble::tibble())
+
+  # Epidemiology-only: optional filter to SURE samples
+  if (isTRUE(input$epi_only_sure)) {
+    sure_ids <- get_sure_ids()  # <- you said you implemented up to 3)
+    all_samples <- all_samples %>%
+      mutate(sample_md5 = md5_id(sample_id)) %>%
+      semi_join(sure_ids, by = c("sample_md5" = "ID"))
+  }
+
 
   all_samples <- purrr::pmap_dfr(
     list(runs$pipeline_dir, runs$results_dir, runs$run),
