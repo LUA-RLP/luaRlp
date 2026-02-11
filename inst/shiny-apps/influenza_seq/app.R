@@ -86,6 +86,11 @@ ui <- navbarPage(
           
           br(),
           DTOutput("epi_tbl"),
+          
+          br(),
+          h4("Line list"),
+          DTOutput("epi_line_tbl"),
+          
           hr(),
           tags$div(style = "color:#666; font-size:12px;", "App author: Emanuel Heitlinger")
         )
@@ -159,11 +164,11 @@ server <- function(input, output, session) {
     runs
   })
   
-  epi_data <- reactive({
+epi_samples <- reactive({
   runs <- epi_runs_filtered()
   if (nrow(runs) == 0) return(tibble::tibble())
 
-  # 1) collect samples across runs
+  # collect samples across runs
   all_samples <- purrr::pmap_dfr(
     list(runs$pipeline_dir, runs$results_dir, runs$run),
     function(pipeline_dir, results_dir, run_name) {
@@ -179,62 +184,60 @@ server <- function(input, output, session) {
   )
   if (nrow(all_samples) == 0) return(tibble::tibble())
 
-  # 2) join SURE exactly once (cached)
-  sure_df <- get_sure_data()      # from R/sure_link.R (cached)
-  if (!is.null(sure_df) && nrow(sure_df) > 0) {
-    all_samples <- join_sure(all_samples, sure_df)
-  } else {
-    dbg("epi: SURE data empty -> skipping join")
-  }
+  # attach SURE metadata (cached) -> adds Importdatum, Probenahmedatum, Geburtsmonat, ...
+  sure_df <- get_sure_data()
+  all_samples <- join_sure(all_samples, sure_df)   # adds sample_md5 and SURE cols
+  if (nrow(all_samples) == 0) return(tibble::tibble())
 
-  # 3) optional: keep only SURE samples
+  # optional: keep only samples present in SURE
   if (isTRUE(input$epi_only_sure)) {
     all_samples <- samples_only_sure(all_samples)
     if (nrow(all_samples) == 0) return(tibble::tibble())
   }
 
-  # 4) Probenahmedatum filter (inclusive)  <-- FIXED INPUT NAME
+  # Probenahmedatum filter (use YOUR UI id: epi_probenahme_range)
   drp <- input$epi_probenahme_range
-  if (!is.null(drp) && length(drp) == 2 && !any(is.na(drp))) {
+  if (!is.null(drp) && length(drp) == 2 && !any(is.na(drp)) && "Probenahmedatum" %in% names(all_samples)) {
 
-    if ("Probenahmedatum" %in% names(all_samples)) {
+    # ensure Date (in case it came as character)
+    all_samples <- all_samples %>%
+      dplyr::mutate(
+        Probenahmedatum = suppressWarnings(as.Date(
+          Probenahmedatum,
+          tryFormats = c("%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y")
+        ))
+      )
+
+    start_p <- as.Date(drp[1])
+    end_p   <- as.Date(drp[2])
+
+    if (any(!is.na(all_samples$Probenahmedatum))) {
       all_samples <- all_samples %>%
-        dplyr::mutate(
-          Probenahmedatum = suppressWarnings(as.Date(
-            Probenahmedatum,
-            tryFormats = c("%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y")
-          ))
+        dplyr::filter(
+          !is.na(Probenahmedatum),
+          Probenahmedatum >= start_p,
+          Probenahmedatum <= end_p
         )
-
-      start_p <- as.Date(drp[1])
-      end_p   <- as.Date(drp[2])
-
-      # apply only if there are real dates
-      if (any(!is.na(all_samples$Probenahmedatum))) {
-        all_samples <- all_samples %>%
-          dplyr::filter(
-            !is.na(Probenahmedatum),
-            Probenahmedatum >= start_p,
-            Probenahmedatum <= end_p
-          )
-      } else {
-        dbg("epi: Probenahmedatum exists but all NA -> skipping probendatum filter")
-      }
-
     } else {
-      dbg("epi: no Probenahmedatum column (SURE join missing or columns renamed)")
+      dbg("epi: Probenahmedatum exists but all NA -> skipping filter")
     }
   }
 
-  dbg("epi: rows after filters = ", nrow(all_samples))
-
-  # 5) aggregate for epi table
+  # normalize typing columns (empty -> NA)
   all_samples %>%
     dplyr::mutate(
       subtype  = dplyr::na_if(as.character(subtype), ""),
       clade    = dplyr::na_if(as.character(clade), ""),
       subclade = dplyr::na_if(as.character(subclade), "")
-    ) %>%
+    )
+})
+
+
+epi_data <- reactive({
+  x <- epi_samples()
+  if (nrow(x) == 0) return(tibble::tibble())
+
+  x %>%
     dplyr::filter(!is.na(subtype) | !is.na(clade) | !is.na(subclade)) %>%
     dplyr::group_by(subtype, clade, subclade) %>%
     dplyr::summarise(
@@ -244,6 +247,45 @@ server <- function(input, output, session) {
     ) %>%
     dplyr::arrange(dplyr::desc(n_samples))
 })
+
+  epi_line_list <- reactive({
+  x <- epi_samples()
+  if (nrow(x) == 0) return(tibble::tibble())
+
+  # helper: first non-NA value
+  first_non_na <- function(v) {
+    v <- v[!is.na(v) & v != ""]
+    if (length(v) == 0) return(NA_character_)
+    as.character(v[[1]])
+  }
+
+  x %>%
+    dplyr::mutate(
+      sample_md5 = as.character(sample_md5),
+      run = as.character(run)
+    ) %>%
+    dplyr::filter(!is.na(sample_md5) & sample_md5 != "") %>%
+    dplyr::group_by(sample_md5) %>%
+    dplyr::summarise(
+      runs = paste(sort(unique(run)), collapse = ", "),
+      n_runs = dplyr::n_distinct(run),
+
+      Probenahmedatum = suppressWarnings(as.Date(first_non_na(Probenahmedatum))),
+      Geburtsmonat    = first_non_na(Geburtsmonat),
+      Geburtsjahr     = first_non_na(Geburtsjahr),
+      Geschlecht      = first_non_na(Geschlecht),
+      Einsender       = first_non_na(Einsender),
+
+      subtype  = first_non_na(subtype),
+      clade    = first_non_na(clade),
+      subclade = first_non_na(subclade),
+
+      .groups = "drop"
+    ) %>%
+    dplyr::arrange(dplyr::desc(n_runs), dplyr::desc(Probenahmedatum))
+})
+
+  
   
   output$runs_tbl <- renderDT({
     runs <- filtered_runs()
@@ -408,6 +450,33 @@ server <- function(input, output, session) {
     )
   })
   
+output$epi_line_tbl <- renderDT({
+  df <- epi_line_list()
+  validate(need(nrow(df) > 0, "Keine Proben für die aktuelle Auswahl."))
+
+  disp <- df %>%
+    dplyr::transmute(
+      MD5_ID = sample_md5,
+      Probenahmedatum = Probenahmedatum,
+      Geburtsmonat = Geburtsmonat,
+      Geburtsjahr = Geburtsjahr,
+      Geschlecht = Geschlecht,
+      Einsender = Einsender,
+      Subtype = dplyr::coalesce(subtype, "—"),
+      Clade = dplyr::coalesce(clade, "—"),
+      Subclade = dplyr::coalesce(subclade, "—"),
+      Runs = runs,
+      `#Runs` = n_runs
+    )
+
+  datatable(
+    disp,
+    rownames = FALSE,
+    options = list(pageLength = 25, autoWidth = TRUE, scrollX = TRUE)
+  )
+})
+
+
   
 }
 
