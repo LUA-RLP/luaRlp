@@ -131,6 +131,51 @@ ui <- navbarPage(
       )
     })
     
+epi_data <- reactive({
+  runs <- epi_runs_filtered()
+  if (nrow(runs) == 0) return(tibble::tibble())
+
+  all_samples <- purrr::pmap_dfr(
+    list(runs$pipeline_dir, runs$results_dir, runs$run),
+    function(pipeline_dir, results_dir, run_name) {
+      tryCatch({
+        df <- build_sample_table(pipeline_dir, results_dir)
+        if (is.null(df) || nrow(df) == 0) return(tibble::tibble())
+        df %>% dplyr::mutate(run = run_name)
+      }, error = function(e) {
+        dbg("epi build_sample_table error for run ", run_name, ": ", conditionMessage(e))
+        tibble::tibble()
+      })
+    }
+  )
+
+  if (nrow(all_samples) == 0) return(tibble::tibble())
+
+  # Optional: SURE-only filter (epi tab only)
+  if (isTRUE(input$epi_only_sure)) {
+    sure_ids <- get_sure_ids()  # must return a df with column ID
+    all_samples <- all_samples %>%
+      dplyr::mutate(sample_md5 = md5_id(sample_id)) %>%
+      dplyr::semi_join(sure_ids, by = c("sample_md5" = "ID"))
+  }
+
+  all_samples %>%
+    dplyr::mutate(
+      subtype  = dplyr::na_if(as.character(subtype), ""),
+      clade    = dplyr::na_if(as.character(clade), ""),
+      subclade = dplyr::na_if(as.character(subclade), "")
+    ) %>%
+    dplyr::filter(!is.na(subtype) | !is.na(clade) | !is.na(subclade)) %>%
+    dplyr::group_by(subtype, clade, subclade) %>%
+    dplyr::summarise(
+      n_samples = dplyr::n_distinct(sample_id),
+      n_runs = dplyr::n_distinct(run),
+      .groups = "drop"
+    ) %>%
+    dplyr::arrange(dplyr::desc(n_samples))
+})
+
+
     epi_runs_filtered <- reactive({
       runs <- filtered_runs()
       if (nrow(runs) == 0) return(runs)
