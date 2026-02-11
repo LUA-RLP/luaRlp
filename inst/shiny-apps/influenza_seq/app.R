@@ -156,58 +156,7 @@ epi_runs_filtered <- reactive({
   runs
 })
 
-epi_data <- reactive({
-  runs <- epi_runs_filtered()
-  if (nrow(runs) == 0) return(tibble::tibble())
 
-  # Epidemiology-only: optional filter to SURE samples
-  if (isTRUE(input$epi_only_sure)) {
-    sure_ids <- get_sure_ids()  # <- you said you implemented up to 3)
-    all_samples <- all_samples %>%
-      mutate(sample_md5 = md5_id(sample_id)) %>%
-      semi_join(sure_ids, by = c("sample_md5" = "ID"))
-  }
-
-
-  all_samples <- purrr::pmap_dfr(
-    list(runs$pipeline_dir, runs$results_dir, runs$run),
-    function(pipeline_dir, results_dir, run_name) {
-      tryCatch({
-        df <- build_sample_table(pipeline_dir, results_dir)
-        if (is.null(df) || nrow(df) == 0) return(tibble::tibble())
-        df %>%
-          mutate(run = run_name)
-      }, error = function(e) {
-        dbg("epi build_sample_table error for run ", run_name, ": ", conditionMessage(e))
-        tibble::tibble()
-      })
-    }
-  )
-
-  if (nrow(all_samples) == 0) return(tibble::tibble())
-
-  all_samples %>%
-    mutate(
-      subtype  = ifelse(is.na(subtype)  | subtype  == "", NA_character_, as.character(subtype)),
-      clade    = ifelse(is.na(clade)    | clade    == "", NA_character_, as.character(clade)),
-      subclade = ifelse(is.na(subclade) | subclade == "", NA_character_, as.character(subclade))
-    ) %>%
-    # keep anything that has at least SOME epi signal
-    filter(!is.na(subtype) | !is.na(clade) | !is.na(subclade)) %>%
-    group_by(subtype, clade, subclade) %>%
-    summarise(
-      n_samples = n_distinct(sample_id),
-      n_runs = n_distinct(run),
-      .groups = "drop"
-    ) %>%
-    arrange(desc(n_samples))
-})
-
-
-observeEvent(input$epi_refresh, {
-  # just triggers reactivity; useful when you want manual refresh
-  dbg("epi_refresh clicked")
-})
 
 
   output$runs_tbl <- renderDT({
