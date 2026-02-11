@@ -40,7 +40,7 @@ ui <- navbarPage(
   ),
   
   tabPanel(
-    "Epidemiology",
+    "Epidemiologie",
     fluidPage(
       fluidRow(
         column(
@@ -50,21 +50,26 @@ ui <- navbarPage(
           "Positive Proben (über ausgewählte Sequenzieräufe und Zeitraum)"),
           
           fluidRow(
-            column(
-              6,
-              uiOutput("epi_run_picker")
-            ),
-            column(
-              6,
-              dateRangeInput(
-                "epi_daterange",
-                "Auswahl des Laufdatums",
-                start = Sys.Date() - 30,
-                end = Sys.Date(),
-                format = "yyyy-mm-dd"
-              )
-            )
-          ),
+  column(6, uiOutput("epi_run_picker")),
+  column(6, dateRangeInput(
+    "epi_daterange",
+    "Sequenzierlauf innerhalb Zeitraum",
+    start = Sys.Date() - 30,
+    end = Sys.Date(),
+    format = "yyyy-mm-dd"
+  ))
+),
+
+fluidRow(
+  column(6, dateRangeInput(
+    "epi_probenahme_range",
+    "Probenahmedatum innerhalb Zeitraum",
+    start = Sys.Date() - 30,
+    end = Sys.Date(),
+    format = "yyyy-mm-dd"
+  ))
+)
+,
           
           # >>> ADD THIS BLOCK (Epidemiology-only filter) <<<
           fluidRow(
@@ -135,70 +140,70 @@ epi_data <- reactive({
   runs <- epi_runs_filtered()
   if (nrow(runs) == 0) return(tibble::tibble())
 
+  # 1) collect samples across runs
   all_samples <- purrr::pmap_dfr(
     list(runs$pipeline_dir, runs$results_dir, runs$run),
     function(pipeline_dir, results_dir, run_name) {
       tryCatch({
         df <- build_sample_table(pipeline_dir, results_dir)
         if (is.null(df) || nrow(df) == 0) return(tibble::tibble())
-        df %>% dplyr::mutate(run = run_name)
+        df %>% mutate(run = run_name)
       }, error = function(e) {
         dbg("epi build_sample_table error for run ", run_name, ": ", conditionMessage(e))
         tibble::tibble()
       })
     }
   )
-
   if (nrow(all_samples) == 0) return(tibble::tibble())
 
-  # Optional: SURE-only filter (epi tab only)
-  if (isTRUE(input$epi_only_sure)) {
-    sure_ids <- get_sure_ids()  # must return a df with column ID
-    all_samples <- all_samples %>%
-      dplyr::mutate(sample_md5 = md5_id(sample_id)) %>%
-      dplyr::semi_join(sure_ids, by = c("sample_md5" = "ID"))
-  }
+  # 2) add md5 key
+  all_samples <- all_samples %>%
+    mutate(
+      sample_id = as.character(sample_id),
+      sample_md5 = md5_id(sample_id)
+    )
 
+  # 3) optional: keep only SURE samples (fast filter)
+  if (isTRUE(input$epi_only_sure)) {
+    sure_ids <- get_sure_ids()
+    all_samples <- all_samples %>%
+      semi_join(sure_ids, by = c("sample_md5" = "ID"))
+  }
+  if (nrow(all_samples) == 0) return(tibble::tibble())
+
+  # 4) bring in SURE columns (incl. Probenahmedatum)
+  #    uses the cached loader from sure_link.R
+  sure_df <- get_sure_data()
+  all_samples <- join_sure(all_samples, sure_df)
+
+  # 5) filter by Probenahmedatum (SURE)
+  dr2 <- input$epi_probenahme_range
+  if (!is.null(dr2) && length(dr2) == 2 && !any(is.na(dr2))) {
+    start2 <- as.Date(dr2[1])
+    end2   <- as.Date(dr2[2])
+    all_samples <- all_samples %>%
+      filter(!is.na(Probenahmedatum)) %>%
+      filter(Probenahmedatum >= start2, Probenahmedatum <= end2)
+  }
+  if (nrow(all_samples) == 0) return(tibble::tibble())
+
+  # 6) summarise for epi table
   all_samples %>%
-    dplyr::mutate(
-      subtype  = dplyr::na_if(as.character(subtype), ""),
-      clade    = dplyr::na_if(as.character(clade), ""),
-      subclade = dplyr::na_if(as.character(subclade), "")
+    mutate(
+      subtype  = ifelse(is.na(subtype)  | subtype  == "", NA_character_, as.character(subtype)),
+      clade    = ifelse(is.na(clade)    | clade    == "", NA_character_, as.character(clade)),
+      subclade = ifelse(is.na(subclade) | subclade == "", NA_character_, as.character(subclade))
     ) %>%
-    dplyr::filter(!is.na(subtype) | !is.na(clade) | !is.na(subclade)) %>%
-    dplyr::group_by(subtype, clade, subclade) %>%
-    dplyr::summarise(
-      n_samples = dplyr::n_distinct(sample_id),
-      n_runs = dplyr::n_distinct(run),
+    filter(!is.na(subtype) | !is.na(clade) | !is.na(subclade)) %>%
+    group_by(subtype, clade, subclade) %>%
+    summarise(
+      n_samples = n_distinct(sample_id),
+      n_runs = n_distinct(run),
       .groups = "drop"
     ) %>%
-    dplyr::arrange(dplyr::desc(n_samples))
+    arrange(desc(n_samples))
 })
 
-
-    epi_runs_filtered <- reactive({
-      runs <- filtered_runs()
-      if (nrow(runs) == 0) return(runs)
-      
-      # filter by run selection
-      sel <- input$epi_runs
-      if (!is.null(sel) && length(sel) > 0) {
-        runs <- runs %>% dplyr::filter(.data$run %in% sel)
-      } else {
-        # if user deselects everything: show nothing
-        return(runs[0, , drop = FALSE])
-      }
-      
-      # filter by date range (based on runs$updated)
-      dr <- input$epi_daterange
-      if (!is.null(dr) && length(dr) == 2 && !any(is.na(dr))) {
-        start <- as.POSIXct(dr[1], tz = "Europe/Berlin")
-        end   <- as.POSIXct(dr[2] + 1, tz = "Europe/Berlin") # inclusive end date
-        runs <- runs %>% dplyr::filter(.data$updated >= start, .data$updated < end)
-      }
-      
-      runs
-    })
     
     
     
