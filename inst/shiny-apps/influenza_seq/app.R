@@ -159,77 +159,92 @@ server <- function(input, output, session) {
     runs
   })
   
-  
-  
   epi_data <- reactive({
-    runs <- epi_runs_filtered()
-    if (nrow(runs) == 0) return(tibble::tibble())
-    
-    all_samples <- purrr::pmap_dfr(
-      list(runs$pipeline_dir, runs$results_dir, runs$run),
-      function(pipeline_dir, results_dir, run_name) {
-        tryCatch({
-          df <- build_sample_table(pipeline_dir, results_dir)
-          if (is.null(df) || nrow(df) == 0) return(tibble::tibble())
-          df %>% mutate(run = run_name)
-        }, error = function(e) {
-          dbg("epi build_sample_table error for run ", run_name, ": ", conditionMessage(e))
-          tibble::tibble()
-        })
-      }
-    )
-    if (nrow(all_samples) == 0) return(tibble::tibble())
-    
-    # optional SURE-only filter
-    if (isTRUE(input$epi_only_sure)) {
-      sure_ids <- get_sure_ids()   # must exist in R/sure_link.R
-      all_samples <- all_samples %>%
-      mutate(sample_md5 = md5_id(sample_id)) %>%
-      semi_join(sure_ids, by = c("sample_md5" = "ID"))
+  runs <- epi_runs_filtered()
+  if (nrow(runs) == 0) return(tibble::tibble())
+
+  # 1) collect samples across runs
+  all_samples <- purrr::pmap_dfr(
+    list(runs$pipeline_dir, runs$results_dir, runs$run),
+    function(pipeline_dir, results_dir, run_name) {
+      tryCatch({
+        df <- build_sample_table(pipeline_dir, results_dir)
+        if (is.null(df) || nrow(df) == 0) return(tibble::tibble())
+        df %>% dplyr::mutate(run = run_name)
+      }, error = function(e) {
+        dbg("epi build_sample_table error for run ", run_name, ": ", conditionMessage(e))
+        tibble::tibble()
+      })
     }
+  )
+  if (nrow(all_samples) == 0) return(tibble::tibble())
+
+  # 2) join SURE once (adds Probenahmedatum etc.)
+  all_samples <- join_sure(all_samples, SURE)
+
+  # 3) optional: keep only SURE samples
+  if (isTRUE(input$epi_only_sure)) {
+    all_samples <- samples_only_sure(all_samples)
     if (nrow(all_samples) == 0) return(tibble::tibble())
-    
-    all_samples %>%
-    mutate(
-      subtype  = ifelse(is.na(subtype)  | subtype  == "", NA_character_, as.character(subtype)),
-      clade    = ifelse(is.na(clade)    | clade    == "", NA_character_, as.character(clade)),
-      subclade = ifelse(is.na(subclade) | subclade == "", NA_character_, as.character(subclade))
-    ) %>%
-    filter(!is.na(subtype) | !is.na(clade) | !is.na(subclade)) %>%
-    group_by(subtype, clade, subclade) %>%
-    summarise(
-      n_samples = n_distinct(sample_id),
-      n_runs = n_distinct(run),
-      .groups = "drop"
-    ) %>%
-    arrange(desc(n_samples))
-    
-    
-    # --- ensure Probenahmedatum is a Date (even if it came in as character) ---
+  }
+
+  # 4) Probenahmedatum filter (inclusive)
+  drp <- input$epi_probendate
+  if (!is.null(drp) && length(drp) == 2 && !any(is.na(drp))) {
+
+    # ensure Date; try multiple common formats safely
     if ("Probenahmedatum" %in% names(all_samples)) {
       all_samples <- all_samples %>%
-      mutate(Probenahmedatum = as.Date(Probenahmedatum))
-    }
-    
-    # --- filter by Probenahmedatum date range (inclusive) ---
-    drp <- input$epi_probendate
-    if (!is.null(drp) && length(drp) == 2 && !any(is.na(drp))) {
+        dplyr::mutate(
+          Probenahmedatum = suppressWarnings(as.Date(
+            Probenahmedatum,
+            tryFormats = c("%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y")
+          ))
+        )
+
       start_p <- as.Date(drp[1])
       end_p   <- as.Date(drp[2])
-      
-      # Only apply if the column exists; otherwise the filter can't do anything
-      if ("Probenahmedatum" %in% names(all_samples)) {
+
+      # Only filter if there are any non-NA dates; avoids nuking everything silently
+      if (any(!is.na(all_samples$Probenahmedatum))) {
         all_samples <- all_samples %>%
-        filter(!is.na(Probenahmedatum),
-        Probenahmedatum >= start_p,
-        Probenahmedatum <= end_p)
+          dplyr::filter(
+            !is.na(Probenahmedatum),
+            Probenahmedatum >= start_p,
+            Probenahmedatum <= end_p
+          )
+      } else {
+        dbg("epi: Probenahmedatum exists but is all NA -> skipping probendate filter")
       }
+    } else {
+      dbg("epi: no Probenahmedatum column (did SURE join run?)")
     }
+  }
 
-    dbg("epi: has Probenahmedatum col? ", "Probenahmedatum" %in% names(all_samples))
+  dbg("epi: has Probenahmedatum col? ", "Probenahmedatum" %in% names(all_samples))
+  if ("Probenahmedatum" %in% names(all_samples)) {
+    dbg("epi: Probenahmedatum non-NA = ", sum(!is.na(all_samples$Probenahmedatum)))
+  }
 
+  # 5) aggregate for epi table
+  out <- all_samples %>%
+    dplyr::mutate(
+      subtype  = dplyr::na_if(as.character(subtype), ""),
+      clade    = dplyr::na_if(as.character(clade), ""),
+      subclade = dplyr::na_if(as.character(subclade), "")
+    ) %>%
+    dplyr::filter(!is.na(subtype) | !is.na(clade) | !is.na(subclade)) %>%
+    dplyr::group_by(subtype, clade, subclade) %>%
+    dplyr::summarise(
+      n_samples = dplyr::n_distinct(sample_id),
+      n_runs    = dplyr::n_distinct(run),
+      .groups = "drop"
+    ) %>%
+    dplyr::arrange(dplyr::desc(n_samples))
 
-  })
+  out
+})
+
   
   
   
