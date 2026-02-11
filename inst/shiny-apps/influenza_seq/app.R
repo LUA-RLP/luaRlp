@@ -16,15 +16,15 @@ ui <- navbarPage(
   "Influenza Dashboard",
   id = "main_tab",
   tabPanel(
-    "Runs",
+    "Läufe",
     fluidPage(
       fluidRow(
         column(
           12,
-          h3("Runs"),
+          h3("Läufe"),
           fluidRow(
             column(6, checkboxInput("include_empty_runs",
-            "Zeige Läufe without ohne Influenza-Proben (keine 3263-Proben)", FALSE)),
+            "Zeige Läufe ohne Influenza-Proben (keine 3263-Proben)", FALSE)),
             column(6, checkboxInput("include_no_pass_runs",
             "Zeige Läufe ohne Proben über den Qualitätsschwellenwerten", FALSE))
           ),
@@ -45,7 +45,7 @@ ui <- navbarPage(
       fluidRow(
         column(
           12,
-          h3("Epidemiology"),
+          h3("Epidemiologie"),
           tags$p(style="color:#666;",
           "Positive Proben (über ausgewählte Sequenzieräufe und Zeitraum)"),
           
@@ -288,7 +288,7 @@ epi_data <- reactive({
       }
       
       tags$div(
-        h3(paste0("Run: ", run_name)),
+        h3(paste0("Lauf: ", run_name)),
         tags$p(tags$b("Status: "), scalar_chr(sr$status)),
         tags$p(mq),
         tags$p("Samplesheet: ", tags$code(ss_path %||str% "—")),

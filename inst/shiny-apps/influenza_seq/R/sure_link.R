@@ -24,7 +24,7 @@ read_sure_csv <- function(path, encoding = "Windows-1252") {
   pr <- readr::problems(df)
   if (nrow(pr) > 0) {
     bad <- sort(unique(pr$row))
-    message("Dropping malformed row(s): ", paste(head(bad, 20), collapse = ", "),
+    message("Verwerfe unformattierte Zeilen: ", paste(head(bad, 20), collapse = ", "),
             if (length(bad) > 20) " ..." else "")
     df <- df[-bad, , drop = FALSE]
   }
