@@ -179,20 +179,13 @@ server <- function(input, output, session) {
   )
   if (nrow(all_samples) == 0) return(tibble::tibble())
 
-    # --- always attach SURE metadata (cached) ---
-sure_df <- get_sure_data()         # from R/sure_link.R, cached
-all_samples <- join_sure(all_samples, sure_df)
-
-# --- optionally keep only samples that exist in SURE ---
-if (isTRUE(input$epi_only_sure)) {
-  all_samples <- samples_only_sure(all_samples)
-}
-
-if (nrow(all_samples) == 0) return(tibble::tibble())
-
-
-  # 2) join SURE once (adds Probenahmedatum etc.)
-  all_samples <- join_sure(all_samples, get_sure_data())
+  # 2) join SURE exactly once (cached)
+  sure_df <- get_sure_data()      # from R/sure_link.R (cached)
+  if (!is.null(sure_df) && nrow(sure_df) > 0) {
+    all_samples <- join_sure(all_samples, sure_df)
+  } else {
+    dbg("epi: SURE data empty -> skipping join")
+  }
 
   # 3) optional: keep only SURE samples
   if (isTRUE(input$epi_only_sure)) {
@@ -200,11 +193,10 @@ if (nrow(all_samples) == 0) return(tibble::tibble())
     if (nrow(all_samples) == 0) return(tibble::tibble())
   }
 
-  # 4) Probenahmedatum filter (inclusive)
-  drp <- input$epi_probendate
+  # 4) Probenahmedatum filter (inclusive)  <-- FIXED INPUT NAME
+  drp <- input$epi_probenahme_range
   if (!is.null(drp) && length(drp) == 2 && !any(is.na(drp))) {
 
-    # ensure Date; try multiple common formats safely
     if ("Probenahmedatum" %in% names(all_samples)) {
       all_samples <- all_samples %>%
         dplyr::mutate(
@@ -217,7 +209,7 @@ if (nrow(all_samples) == 0) return(tibble::tibble())
       start_p <- as.Date(drp[1])
       end_p   <- as.Date(drp[2])
 
-      # Only filter if there are any non-NA dates; avoids nuking everything silently
+      # apply only if there are real dates
       if (any(!is.na(all_samples$Probenahmedatum))) {
         all_samples <- all_samples %>%
           dplyr::filter(
@@ -226,20 +218,18 @@ if (nrow(all_samples) == 0) return(tibble::tibble())
             Probenahmedatum <= end_p
           )
       } else {
-        dbg("epi: Probenahmedatum exists but is all NA -> skipping probendate filter")
+        dbg("epi: Probenahmedatum exists but all NA -> skipping probendatum filter")
       }
+
     } else {
-      dbg("epi: no Probenahmedatum column (did SURE join run?)")
+      dbg("epi: no Probenahmedatum column (SURE join missing or columns renamed)")
     }
   }
 
-  dbg("epi: has Probenahmedatum col? ", "Probenahmedatum" %in% names(all_samples))
-  if ("Probenahmedatum" %in% names(all_samples)) {
-    dbg("epi: Probenahmedatum non-NA = ", sum(!is.na(all_samples$Probenahmedatum)))
-  }
+  dbg("epi: rows after filters = ", nrow(all_samples))
 
   # 5) aggregate for epi table
-  out <- all_samples %>%
+  all_samples %>%
     dplyr::mutate(
       subtype  = dplyr::na_if(as.character(subtype), ""),
       clade    = dplyr::na_if(as.character(clade), ""),
@@ -253,12 +243,7 @@ if (nrow(all_samples) == 0) return(tibble::tibble())
       .groups = "drop"
     ) %>%
     dplyr::arrange(dplyr::desc(n_samples))
-
-  out
-  })
-
-  
-  
+})
   
   output$runs_tbl <- renderDT({
     runs <- filtered_runs()
