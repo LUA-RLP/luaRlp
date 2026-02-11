@@ -24,9 +24,9 @@ ui <- navbarPage(
           h3("Runs"),
           fluidRow(
             column(6, checkboxInput("include_empty_runs",
-            "Include runs without any samples (missing/empty samplesheet)", FALSE)),
+            "Zeige Läufe without ohne Influenza-Proben (keine 3263-Proben)", FALSE)),
             column(6, checkboxInput("include_no_pass_runs",
-            "Include runs without any quality-passed samples (applies after selecting a run)", FALSE))
+            "Zeige Läufe ohne Proben über den Qualitätsschwellenwerten", FALSE))
           ),
           DTOutput("runs_tbl"),
           hr(),
@@ -47,7 +47,7 @@ ui <- navbarPage(
           12,
           h3("Epidemiology"),
           tags$p(style="color:#666;",
-          "Counts aggregated across selected runs and time range."),
+          "Positive Proben (über ausgewählte Sequenzieräufe und Zeitraum)"),
           
           fluidRow(
             column(
@@ -58,7 +58,7 @@ ui <- navbarPage(
               6,
               dateRangeInput(
                 "epi_daterange",
-                "Run updated date range",
+                "Auswahl des Laufdatums",
                 start = Sys.Date() - 30,
                 end = Sys.Date(),
                 format = "yyyy-mm-dd"
@@ -124,7 +124,7 @@ ui <- navbarPage(
       # default: all runs
       selectInput(
         "epi_runs",
-        "Runs to include",
+        "Zeige folgende Sequenzierläufe",
         choices = choices,
         selected = choices,
         multiple = TRUE
@@ -205,7 +205,7 @@ epi_data <- reactive({
     
     output$runs_tbl <- renderDT({
       runs <- filtered_runs()
-      validate(need(nrow(runs) > 0, "No runs found (or none match filters)."))
+      validate(need(nrow(runs) > 0, "Keine Sequenzierläufe gefunden (für Auswahlbedingungen)."))
       
       # ---- NEW: cached counts per run (fast after first computation) ----
       metrics <- purrr::pmap_dfr(
@@ -293,14 +293,14 @@ epi_data <- reactive({
         tags$p(mq),
         tags$p("Samplesheet: ", tags$code(ss_path %||str% "—")),
         if (!has_ss) tags$p(tags$span(style="color:#a94442; font-weight:700;",
-        "ERROR: Missing/empty samplesheet (cannot build sample table).")) else NULL,
+        "ERROR: Fehlendes oder leeres samplesheet (kann keine Probentabelle ersellen).")) else NULL,
         tags$p(tags$small(tags$code(results_dir)))
       )
     })
     
     output$samples_tbl <- renderDT({
       sr <- selected_run()
-      validate(need(!is.null(sr), "Select a run above."))
+      validate(need(!is.null(sr), "Wähle einen Sequenzierlauf."))
       
       tryCatch({
         run_name <- scalar_chr(sr$run)
@@ -308,7 +308,7 @@ epi_data <- reactive({
         pipeline_dir <- scalar_chr(sr$pipeline_dir)
         
         validate(need(!is.na(results_dir) && nzchar(results_dir) && fs::dir_exists(results_dir),
-        "Run has no readable results directory."))
+        "Sequenzierlauf hat kein Resultate-Ordner."))
         
         dbg("samples_tbl start for run ", run_name)
         
@@ -317,7 +317,7 @@ epi_data <- reactive({
         
         if (!isTRUE(input$include_no_pass_runs)) {
           validate(need(any(df$read_count > 0, na.rm = TRUE),
-          "This run has zero passed samples (per read_count). Enable the checkbox to include it."))
+          "Dieser Lauf hat keine Proben (mit reads). Setze den Haken um auszuwählen."))
         }
         
         show_cols <- c("sample_id","read_count",
@@ -335,9 +335,9 @@ epi_data <- reactive({
         datatable(
           data.frame(
             Message = c(
-              "An error has occurred. Check your logs or contact the app author for clarification.",
+              "Ein Fehler ist aufgetreten. Kontrolliere die logs oder kontaktiere den Author der app.",
               paste0("Details: ", conditionMessage(e)),
-              "App author: Emanuel Heitlinger"
+              "App Author: Emanuel Heitlinger"
             )
           ),
           options = list(dom = "t"),
@@ -348,7 +348,7 @@ epi_data <- reactive({
     
     output$epi_tbl <- renderDT({
       df <- epi_data()
-      validate(need(nrow(df) > 0, "No subtype/clade/subclade data found for the current selection."))
+      validate(need(nrow(df) > 0, "Keine subtype/clade/subclade daten für die aktuelle Auswahl gefunden."))
       
       disp <- df %>%
       transmute(
