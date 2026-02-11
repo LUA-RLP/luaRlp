@@ -45,8 +45,8 @@ clean_sure <- function(df) {
     )
 }
 
-SURE1 <- read_sure_csv("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/SURE_DATA_mirror/SURE_Export.csv") |> clean_sure()
-SURE2 <- read_sure_csv("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/SURE_DATA_mirror/SURE_Export.csv")       |> clean_sure()
+SURE1 <- read_sure_csv("/mnt/o/Abteilung Humanmedizin (AHM)/Referat 32/32_6/SURE_DATA_mirror/SURE_Export.csv") |> clean_sure()
+SURE2 <- read_sure_csv("/mnt/o/Abteilung Humanmedizin (AHM)/Referat 32/32_6/SURE_DATA_mirror/SURE_Export.csv")       |> clean_sure()
 
 common_cols <- intersect(names(SURE1), names(SURE2))
 SURE <- bind_rows(
