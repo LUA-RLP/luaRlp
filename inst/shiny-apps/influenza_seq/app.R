@@ -179,8 +179,20 @@ server <- function(input, output, session) {
   )
   if (nrow(all_samples) == 0) return(tibble::tibble())
 
+    # --- always attach SURE metadata (cached) ---
+sure_df <- get_sure_data()         # from R/sure_link.R, cached
+all_samples <- join_sure(all_samples, sure_df)
+
+# --- optionally keep only samples that exist in SURE ---
+if (isTRUE(input$epi_only_sure)) {
+  all_samples <- samples_only_sure(all_samples)
+}
+
+if (nrow(all_samples) == 0) return(tibble::tibble())
+
+
   # 2) join SURE once (adds Probenahmedatum etc.)
-  all_samples <- join_sure(all_samples, SURE)
+  all_samples <- join_sure(all_samples, get_sure_data())
 
   # 3) optional: keep only SURE samples
   if (isTRUE(input$epi_only_sure)) {
@@ -243,7 +255,7 @@ server <- function(input, output, session) {
     dplyr::arrange(dplyr::desc(n_samples))
 
   out
-})
+  })
 
   
   
