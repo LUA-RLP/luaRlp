@@ -162,34 +162,34 @@ server <- function(input, output, session) {
   
   
   epi_data <- reactive({
-  runs <- epi_runs_filtered()
-  if (nrow(runs) == 0) return(tibble::tibble())
-
-  all_samples <- purrr::pmap_dfr(
-    list(runs$pipeline_dir, runs$results_dir, runs$run),
-    function(pipeline_dir, results_dir, run_name) {
-      tryCatch({
-        df <- build_sample_table(pipeline_dir, results_dir)
-        if (is.null(df) || nrow(df) == 0) return(tibble::tibble())
-        df %>% mutate(run = run_name)
-      }, error = function(e) {
-        dbg("epi build_sample_table error for run ", run_name, ": ", conditionMessage(e))
-        tibble::tibble()
-      })
-    }
-  )
-  if (nrow(all_samples) == 0) return(tibble::tibble())
-
-  # optional SURE-only filter
-  if (isTRUE(input$epi_only_sure)) {
-    sure_ids <- get_sure_ids()   # must exist in R/sure_link.R
-    all_samples <- all_samples %>%
+    runs <- epi_runs_filtered()
+    if (nrow(runs) == 0) return(tibble::tibble())
+    
+    all_samples <- purrr::pmap_dfr(
+      list(runs$pipeline_dir, runs$results_dir, runs$run),
+      function(pipeline_dir, results_dir, run_name) {
+        tryCatch({
+          df <- build_sample_table(pipeline_dir, results_dir)
+          if (is.null(df) || nrow(df) == 0) return(tibble::tibble())
+          df %>% mutate(run = run_name)
+        }, error = function(e) {
+          dbg("epi build_sample_table error for run ", run_name, ": ", conditionMessage(e))
+          tibble::tibble()
+        })
+      }
+    )
+    if (nrow(all_samples) == 0) return(tibble::tibble())
+    
+    # optional SURE-only filter
+    if (isTRUE(input$epi_only_sure)) {
+      sure_ids <- get_sure_ids()   # must exist in R/sure_link.R
+      all_samples <- all_samples %>%
       mutate(sample_md5 = md5_id(sample_id)) %>%
       semi_join(sure_ids, by = c("sample_md5" = "ID"))
-  }
-  if (nrow(all_samples) == 0) return(tibble::tibble())
-
-  all_samples %>%
+    }
+    if (nrow(all_samples) == 0) return(tibble::tibble())
+    
+    all_samples %>%
     mutate(
       subtype  = ifelse(is.na(subtype)  | subtype  == "", NA_character_, as.character(subtype)),
       clade    = ifelse(is.na(clade)    | clade    == "", NA_character_, as.character(clade)),
@@ -203,8 +203,34 @@ server <- function(input, output, session) {
       .groups = "drop"
     ) %>%
     arrange(desc(n_samples))
-})
+    
+    
+    # --- ensure Probenahmedatum is a Date (even if it came in as character) ---
+    if ("Probenahmedatum" %in% names(all_samples)) {
+      all_samples <- all_samples %>%
+      mutate(Probenahmedatum = as.Date(Probenahmedatum))
+    }
+    
+    # --- filter by Probenahmedatum date range (inclusive) ---
+    drp <- input$epi_probendate
+    if (!is.null(drp) && length(drp) == 2 && !any(is.na(drp))) {
+      start_p <- as.Date(drp[1])
+      end_p   <- as.Date(drp[2])
+      
+      # Only apply if the column exists; otherwise the filter can't do anything
+      if ("Probenahmedatum" %in% names(all_samples)) {
+        all_samples <- all_samples %>%
+        filter(!is.na(Probenahmedatum),
+        Probenahmedatum >= start_p,
+        Probenahmedatum <= end_p)
+      }
+    }
 
+    dbg("epi: has Probenahmedatum col? ", "Probenahmedatum" %in% names(all_samples))
+
+
+  })
+  
   
   
   output$runs_tbl <- renderDT({
