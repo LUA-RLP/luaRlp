@@ -293,36 +293,7 @@ server <- function(input, output, session) {
       out <- iconv(v, from = "latin1", to = "UTF-8")
       # keep original if iconv failed
       ifelse(is.na(out), v, out)
-    }
-    
-    output$dl_epi_line <- downloadHandler(
-      filename = function() {
-        paste0("influenza_epi_linelijst_", format(Sys.Date(), "%Y-%m-%d"), ".csv")
-      },
-      content = function(file) {
-        df <- epi_line_list()
-        
-        # optional: make the exported columns exactly match the DT display
-        out <- df %>%
-        dplyr::transmute(
-          MD5_ID = sample_md5,
-          Probenahmedatum = Probenahmedatum,
-          Geburtsmonat = Geburtsmonat,
-          Geburtsjahr = Geburtsjahr,
-          Geschlecht = Geschlecht,
-          Einsender = Einsender,
-          Subtype = dplyr::coalesce(subtype, "—"),
-          Clade = dplyr::coalesce(clade, "—"),
-          Subclade = dplyr::coalesce(subclade, "—"),
-          Runs = runs,
-          `#Runs` = n_runs
-        )
-        
-        # write UTF-8 CSV (works for umlauts, Excel generally OK; if needed add BOM)
-        readr::write_excel_csv(out, file)   # requires readr (you already use it)
-      }
-    )
-    
+    }    
     
     x %>%
     dplyr::filter(!is.na(sample_md5) & nzchar(sample_md5)) %>%
@@ -346,7 +317,31 @@ server <- function(input, output, session) {
     dplyr::arrange(dplyr::desc(n_runs), dplyr::desc(Probenahmedatum))
   })
   
-  
+  output$dl_epi_line <- downloadHandler(
+  filename = function() {
+    paste0("influenza_epi_linelijst_", format(Sys.Date(), "%Y-%m-%d"), ".csv")
+  },
+  content = function(file) {
+    df <- epi_line_list()
+
+    out <- df %>%
+      dplyr::transmute(
+        MD5_ID = sample_md5,
+        Probenahmedatum = Probenahmedatum,
+        Geburtsmonat = Geburtsmonat,
+        Geburtsjahr = Geburtsjahr,
+        Geschlecht = Geschlecht,
+        Einsender = Einsender,
+        Subtype = dplyr::coalesce(subtype, "—"),
+        Clade = dplyr::coalesce(clade, "—"),
+        Subclade = dplyr::coalesce(subclade, "—"),
+        Runs = runs,
+        `#Runs` = n_runs
+      )
+
+    readr::write_excel_csv(out, file)
+  }
+)
   
   output$runs_tbl <- renderDT({
     runs <- filtered_runs()
