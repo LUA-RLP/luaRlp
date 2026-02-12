@@ -177,72 +177,71 @@ server <- function(input, output, session) {
   })
   
   epi_samples <- reactive({
-    runs <- epi_runs_filtered()
-    if (nrow(runs) == 0) return(tibble::tibble())
-    
-    # collect samples across runs
-    all_samples <- purrr::pmap_dfr(
-      list(runs$pipeline_dir, runs$results_dir, runs$run),
-      function(pipeline_dir, results_dir, run_name) {
-        tryCatch({
-          df <- build_sample_table(pipeline_dir, results_dir)
-          if (is.null(df) || nrow(df) == 0) return(tibble::tibble())
-          df %>% dplyr::mutate(run = run_name)
-        }, error = function(e) {
-          dbg("epi build_sample_table error for run ", run_name, ": ", conditionMessage(e))
-          tibble::tibble()
-        })
-      }
-    )
+  runs <- epi_runs_filtered()
+  if (nrow(runs) == 0) return(tibble::tibble())
+
+  # 1) collect samples across runs
+  all_samples <- purrr::pmap_dfr(
+    list(runs$pipeline_dir, runs$results_dir, runs$run),
+    function(pipeline_dir, results_dir, run_name) {
+      tryCatch({
+        df <- build_sample_table(pipeline_dir, results_dir)
+        if (is.null(df) || nrow(df) == 0) return(tibble::tibble())
+        df %>% dplyr::mutate(run = run_name)
+      }, error = function(e) {
+        dbg("epi build_sample_table error for run ", run_name, ": ", conditionMessage(e))
+        tibble::tibble()
+      })
+    }
+  )
+  if (nrow(all_samples) == 0) return(tibble::tibble())
+
+  # 2) attach SURE metadata (left join; keeps non-SURE samples!)
+  sure_df <- get_sure_data()
+  all_samples <- join_sure(all_samples, sure_df)
+  if (nrow(all_samples) == 0) return(tibble::tibble())
+
+  # 3) ONLY when epi_only_sure: restrict to SURE + apply Probenahmedatum filter
+  if (isTRUE(input$epi_only_sure)) {
+
+    all_samples <- samples_only_sure(all_samples)
     if (nrow(all_samples) == 0) return(tibble::tibble())
-    
-    # attach SURE metadata (cached) -> adds Importdatum, Probenahmedatum, Geburtsmonat, ...
-    sure_df <- get_sure_data()
-    all_samples <- join_sure(all_samples, sure_df)   # adds sample_md5 and SURE cols
-    if (nrow(all_samples) == 0) return(tibble::tibble())
-    
-    # --- optional SURE-only + Probenahmedatum filter (ONLY when epi_only_sure) ---
-    # ... lots of code above that builds all_samples ...
-    
-    if (isTRUE(input$epi_only_sure)) {
-      
-      all_samples <- samples_only_sure(all_samples)
-      if (nrow(all_samples) == 0) return(tibble::tibble())
-      
-      drp <- input$epi_probenahme_range
-      if (!is.null(drp) && length(drp) == 2 && !any(is.na(drp)) &&
-      "Probenahmedatum" %in% names(all_samples)) {
-        
-        all_samples <- all_samples %>%
+
+    drp <- input$epi_probenahme_range
+    if (!is.null(drp) && length(drp) == 2 && !any(is.na(drp)) &&
+        "Probenahmedatum" %in% names(all_samples)) {
+
+      all_samples <- all_samples %>%
         dplyr::mutate(
           Probenahmedatum = suppressWarnings(as.Date(
             Probenahmedatum,
             tryFormats = c("%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y")
           ))
         )
-        
-        start_p <- as.Date(drp[1])
-        end_p   <- as.Date(drp[2])
-        
-        all_samples <- all_samples %>%
+
+      start_p <- as.Date(drp[1])
+      end_p   <- as.Date(drp[2])
+
+      all_samples <- all_samples %>%
         dplyr::filter(
           !is.na(Probenahmedatum),
           Probenahmedatum >= start_p,
           Probenahmedatum <= end_p
         )
-      }
-      
-      # ALWAYS do this (independent of SURE)
-      all_samples <- all_samples %>%
-      dplyr::mutate(
-        subtype  = dplyr::na_if(as.character(subtype), ""),
-        clade    = dplyr::na_if(as.character(clade), ""),
-        subclade = dplyr::na_if(as.character(subclade), "")
-      )
-      
-      all_samples
     }
-  })
+  }
+
+  # 4) ALWAYS normalize typing columns (independent of SURE)
+  all_samples <- all_samples %>%
+    dplyr::mutate(
+      subtype  = dplyr::na_if(as.character(subtype), ""),
+      clade    = dplyr::na_if(as.character(clade), ""),
+      subclade = dplyr::na_if(as.character(subclade), "")
+    )
+
+  all_samples
+})
+
   
   epi_data <- reactive({
     x <- epi_samples()
