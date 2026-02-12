@@ -82,6 +82,9 @@ ui <- navbarPage(
           
           br(),
           h4("Line list"),
+          fluidRow(
+            column(12, downloadButton("dl_epi_line", "Download Line list (CSV)"))
+          ),
           DTOutput("epi_line_tbl"),
           
           hr(),
@@ -312,6 +315,34 @@ server <- function(input, output, session) {
       .groups = "drop"
     ) %>%
     dplyr::arrange(dplyr::desc(n_runs), dplyr::desc(Probenahmedatum))
+    
+    output$dl_epi_line <- downloadHandler(
+      filename = function() {
+        paste0("influenza_epi_linelijst_", format(Sys.Date(), "%Y-%m-%d"), ".csv")
+      },
+      content = function(file) {
+        df <- epi_line_list()
+        
+        # optional: make the exported columns exactly match the DT display
+        out <- df %>%
+        dplyr::transmute(
+          MD5_ID = sample_md5,
+          Probenahmedatum = Probenahmedatum,
+          Geburtsmonat = Geburtsmonat,
+          Geburtsjahr = Geburtsjahr,
+          Geschlecht = Geschlecht,
+          Einsender = Einsender,
+          Subtype = dplyr::coalesce(subtype, "—"),
+          Clade = dplyr::coalesce(clade, "—"),
+          Subclade = dplyr::coalesce(subclade, "—"),
+          Runs = runs,
+          `#Runs` = n_runs
+        )
+        
+        # write UTF-8 CSV (works for umlauts, Excel generally OK; if needed add BOM)
+        readr::write_excel_csv(out, file)   # requires readr (you already use it)
+      }
+    )
   })
   
   
