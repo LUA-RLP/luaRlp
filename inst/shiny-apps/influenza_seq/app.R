@@ -82,9 +82,7 @@ ui <- navbarPage(
           
           br(),
           h4("Line list"),
-          fluidRow(
-            column(12, downloadButton("dl_epi_line", "Download Line list (CSV)"))
-          ),
+         downloadButton("dl_epi_line", "Download Line list (CSV)"),
           DTOutput("epi_line_tbl"),
           
           hr(),
