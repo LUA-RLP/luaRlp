@@ -147,7 +147,20 @@ server <- function(input, output, session) {
     if (isTRUE(input$epi_only_sure)) {
       ctl
     } else {
-      tags$fieldset(disabled = "disabled", style = "opacity:0.5;", ctl)
+      output$epi_probenahme_ui <- renderUI({
+        ctl <- dateRangeInput(
+          "epi_probenahme_range",
+          "Probenahmedatum innerhalb Zeitraum (nur SURE)",
+          start = Sys.Date() - 30,
+          end   = Sys.Date(),
+          format = "yyyy-mm-dd"
+        )
+        if (isTRUE(input$epi_only_sure)) {
+          ctl
+        } else {
+          tags$div(style = "opacity:0.5; pointer-events:none;", ctl)
+        }
+      })
     }
   })
   
@@ -202,32 +215,13 @@ server <- function(input, output, session) {
     if (nrow(all_samples) == 0) return(tibble::tibble())
     
     # ... after you joined SURE (join_sure) and maybe filtered to SURE samples ...
-
-if (isTRUE(input$epi_only_sure)) {
-
-  # Filter dates after we restricted to SURE samples
-  all_samples <- samples_only_sure(all_samples)
-  if (nrow(all_samples) == 0) return(tibble::tibble())
-
-  drp <- input$epi_probenahme_range
-  if (!is.null(drp) && length(drp) == 2 && !any(is.na(drp))) {
-
-    if ("Probenahmedatum" %in% names(all_samples)) {
-      all_samples <- all_samples %>%
-        dplyr::mutate(Probenahmedatum = as.Date(Probenahmedatum))
-
-      start_p <- as.Date(drp[1])
-      end_p   <- as.Date(drp[2])
-
-      all_samples <- all_samples %>%
-        dplyr::filter(
-          !is.na(Probenahmedatum),
-          Probenahmedatum >= start_p,
-          Probenahmedatum <= end_p
-        )
+    
+    if (isTRUE(input$epi_only_sure)) {
+      
+      # Filter dates after we restricted to SURE samples
+      all_samples <- samples_only_sure(all_samples)
+      if (nrow(all_samples) == 0) return(tibble::tibble())
     }
-  }
-}
     
     # Probenahmedatum filter (use YOUR UI id: epi_probenahme_range)
     drp <- input$epi_probenahme_range
@@ -323,7 +317,7 @@ if (isTRUE(input$epi_only_sure)) {
       runs  = paste(sort(unique(as.character(run))), collapse = ", "),
       n_runs = dplyr::n_distinct(run),
       
-      Probenahmedatum = first_date(Probenahmedatum),
+      Probenahme   = first_date(Probenahmedatum),
       Geburtsmonat    = first_non_empty_chr(Geburtsmonat),
       Geburtsjahr     = first_non_empty_chr(Geburtsjahr),
       Geschlecht      = fix_mojibake(first_non_empty_chr(Geschlecht)),
