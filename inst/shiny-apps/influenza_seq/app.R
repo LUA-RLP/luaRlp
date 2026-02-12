@@ -314,10 +314,10 @@ server <- function(input, output, session) {
     dplyr::filter(!is.na(sample_md5) & nzchar(sample_md5)) %>%
     dplyr::group_by(sample_md5) %>%
     dplyr::summarise(
-      runs  = paste(sort(unique(as.character(run))), collapse = ", "),
+      runs   = paste(sort(unique(as.character(run))), collapse = ", "),
       n_runs = dplyr::n_distinct(run),
       
-      Probenahme   = first_date(Probenahmedatum),
+      Probenahmedatum = first_date(Probenahmedatum),
       Geburtsmonat    = first_non_empty_chr(Geburtsmonat),
       Geburtsjahr     = first_non_empty_chr(Geburtsjahr),
       Geschlecht      = fix_mojibake(first_non_empty_chr(Geschlecht)),
