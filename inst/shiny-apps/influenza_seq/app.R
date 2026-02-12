@@ -295,27 +295,6 @@ server <- function(input, output, session) {
       ifelse(is.na(out), v, out)
     }
     
-    x %>%
-    dplyr::filter(!is.na(sample_md5) & nzchar(sample_md5)) %>%
-    dplyr::group_by(sample_md5) %>%
-    dplyr::summarise(
-      runs   = paste(sort(unique(as.character(run))), collapse = ", "),
-      n_runs = dplyr::n_distinct(run),
-      
-      Probenahmedatum = first_date(Probenahmedatum),
-      Geburtsmonat    = first_non_empty_chr(Geburtsmonat),
-      Geburtsjahr     = first_non_empty_chr(Geburtsjahr),
-      Geschlecht      = fix_mojibake(first_non_empty_chr(Geschlecht)),
-      Einsender       = fix_mojibake(first_non_empty_chr(Einsender)),
-      
-      subtype  = first_non_empty_chr(subtype),
-      clade    = first_non_empty_chr(clade),
-      subclade = first_non_empty_chr(subclade),
-      
-      .groups = "drop"
-    ) %>%
-    dplyr::arrange(dplyr::desc(n_runs), dplyr::desc(Probenahmedatum))
-    
     output$dl_epi_line <- downloadHandler(
       filename = function() {
         paste0("influenza_epi_linelijst_", format(Sys.Date(), "%Y-%m-%d"), ".csv")
@@ -343,6 +322,28 @@ server <- function(input, output, session) {
         readr::write_excel_csv(out, file)   # requires readr (you already use it)
       }
     )
+    
+    
+    x %>%
+    dplyr::filter(!is.na(sample_md5) & nzchar(sample_md5)) %>%
+    dplyr::group_by(sample_md5) %>%
+    dplyr::summarise(
+      runs   = paste(sort(unique(as.character(run))), collapse = ", "),
+      n_runs = dplyr::n_distinct(run),
+      
+      Probenahmedatum = first_date(Probenahmedatum),
+      Geburtsmonat    = first_non_empty_chr(Geburtsmonat),
+      Geburtsjahr     = first_non_empty_chr(Geburtsjahr),
+      Geschlecht      = fix_mojibake(first_non_empty_chr(Geschlecht)),
+      Einsender       = fix_mojibake(first_non_empty_chr(Einsender)),
+      
+      subtype  = first_non_empty_chr(subtype),
+      clade    = first_non_empty_chr(clade),
+      subclade = first_non_empty_chr(subclade),
+      
+      .groups = "drop"
+    ) %>%
+    dplyr::arrange(dplyr::desc(n_runs), dplyr::desc(Probenahmedatum))
   })
   
   
