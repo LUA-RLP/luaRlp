@@ -177,71 +177,71 @@ server <- function(input, output, session) {
   })
   
   epi_samples <- reactive({
-  runs <- epi_runs_filtered()
-  if (nrow(runs) == 0) return(tibble::tibble())
-
-  # 1) collect samples across runs
-  all_samples <- purrr::pmap_dfr(
-    list(runs$pipeline_dir, runs$results_dir, runs$run),
-    function(pipeline_dir, results_dir, run_name) {
-      tryCatch({
-        df <- build_sample_table(pipeline_dir, results_dir)
-        if (is.null(df) || nrow(df) == 0) return(tibble::tibble())
-        df %>% dplyr::mutate(run = run_name)
-      }, error = function(e) {
-        dbg("epi build_sample_table error for run ", run_name, ": ", conditionMessage(e))
-        tibble::tibble()
-      })
-    }
-  )
-  if (nrow(all_samples) == 0) return(tibble::tibble())
-
-  # 2) attach SURE metadata (left join; keeps non-SURE samples!)
-  sure_df <- get_sure_data()
-  all_samples <- join_sure(all_samples, sure_df)
-  if (nrow(all_samples) == 0) return(tibble::tibble())
-
-  # 3) ONLY when epi_only_sure: restrict to SURE + apply Probenahmedatum filter
-  if (isTRUE(input$epi_only_sure)) {
-
-    all_samples <- samples_only_sure(all_samples)
+    runs <- epi_runs_filtered()
+    if (nrow(runs) == 0) return(tibble::tibble())
+    
+    # 1) collect samples across runs
+    all_samples <- purrr::pmap_dfr(
+      list(runs$pipeline_dir, runs$results_dir, runs$run),
+      function(pipeline_dir, results_dir, run_name) {
+        tryCatch({
+          df <- build_sample_table(pipeline_dir, results_dir)
+          if (is.null(df) || nrow(df) == 0) return(tibble::tibble())
+          df %>% dplyr::mutate(run = run_name)
+        }, error = function(e) {
+          dbg("epi build_sample_table error for run ", run_name, ": ", conditionMessage(e))
+          tibble::tibble()
+        })
+      }
+    )
     if (nrow(all_samples) == 0) return(tibble::tibble())
-
-    drp <- input$epi_probenahme_range
-    if (!is.null(drp) && length(drp) == 2 && !any(is.na(drp)) &&
-        "Probenahmedatum" %in% names(all_samples)) {
-
-      all_samples <- all_samples %>%
+    
+    # 2) attach SURE metadata (left join; keeps non-SURE samples!)
+    sure_df <- get_sure_data()
+    all_samples <- join_sure(all_samples, sure_df)
+    if (nrow(all_samples) == 0) return(tibble::tibble())
+    
+    # 3) ONLY when epi_only_sure: restrict to SURE + apply Probenahmedatum filter
+    if (isTRUE(input$epi_only_sure)) {
+      
+      all_samples <- samples_only_sure(all_samples)
+      if (nrow(all_samples) == 0) return(tibble::tibble())
+      
+      drp <- input$epi_probenahme_range
+      if (!is.null(drp) && length(drp) == 2 && !any(is.na(drp)) &&
+      "Probenahmedatum" %in% names(all_samples)) {
+        
+        all_samples <- all_samples %>%
         dplyr::mutate(
           Probenahmedatum = suppressWarnings(as.Date(
             Probenahmedatum,
             tryFormats = c("%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y")
           ))
         )
-
-      start_p <- as.Date(drp[1])
-      end_p   <- as.Date(drp[2])
-
-      all_samples <- all_samples %>%
+        
+        start_p <- as.Date(drp[1])
+        end_p   <- as.Date(drp[2])
+        
+        all_samples <- all_samples %>%
         dplyr::filter(
           !is.na(Probenahmedatum),
           Probenahmedatum >= start_p,
           Probenahmedatum <= end_p
         )
+      }
     }
-  }
-
-  # 4) ALWAYS normalize typing columns (independent of SURE)
-  all_samples <- all_samples %>%
+    
+    # 4) ALWAYS normalize typing columns (independent of SURE)
+    all_samples <- all_samples %>%
     dplyr::mutate(
       subtype  = dplyr::na_if(as.character(subtype), ""),
       clade    = dplyr::na_if(as.character(clade), ""),
       subclade = dplyr::na_if(as.character(subclade), "")
     )
-
-  all_samples
-})
-
+    
+    all_samples
+  })
+  
   
   epi_data <- reactive({
     x <- epi_samples()
@@ -336,6 +336,17 @@ server <- function(input, output, session) {
     
     runs2 <- dplyr::bind_cols(runs, metrics)
     
+    # ensure columns exist even if discovery returned a reduced schema
+    need_chr <- c("multiqc_url", "multiqc_path", "status", "run")
+    need_lgl <- c("has_samplesheet")
+    need_posix <- c("updated")
+    
+    for (nm in need_chr)  if (!nm %in% names(runs2)) runs2[[nm]] <- NA_character_
+    for (nm in need_lgl)  if (!nm %in% names(runs2)) runs2[[nm]] <- NA
+    for (nm in need_posix) if (!nm %in% names(runs2)) runs2[[nm]] <- as.POSIXct(NA)
+    
+    
+    
     disp <- runs2 %>%
     transmute(
       ` ` = case_when(
@@ -355,11 +366,16 @@ server <- function(input, output, session) {
       Subtype   = paste0(n_subtype, "/", n_samples),
       Nextclade = paste0(n_nextclade, "/", n_samples),
       
-      MultiQC = ifelse(
-        !is.na(multiqc_url),
-        paste0('<a href="', multiqc_url, '" target="_blank">MultiQC</a>'),
-        ifelse(!is.na(multiqc_path), "Local", "—")
+      MultiQC = dplyr::if_else(
+        !is.na(.data$multiqc_url) & nzchar(.data$multiqc_url),
+        paste0('<a href="', .data$multiqc_url, '" target="_blank">MultiQC</a>'),
+        dplyr::if_else(
+          !is.na(.data$multiqc_path) & nzchar(.data$multiqc_path),
+          "Local",
+          "—"
+        )
       )
+      
     )
     
     datatable(disp, escape = FALSE, selection = "single",
