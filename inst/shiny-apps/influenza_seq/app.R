@@ -61,15 +61,8 @@ ui <- navbarPage(
           ),
           
           fluidRow(
-            column(6, dateRangeInput(
-              "epi_probenahme_range",
-              "Probenahmedatum innerhalb Zeitraum",
-              start = Sys.Date() - 30,
-              end = Sys.Date(),
-              format = "yyyy-mm-dd"
-            ))
-          )
-          ,
+            column(6, uiOutput("epi_probenahme_ui"))
+          ),
           
           # >>> ADD THIS BLOCK (Epidemiology-only filter) <<<
           fluidRow(
@@ -141,6 +134,25 @@ server <- function(input, output, session) {
     )
   })
   
+  output$epi_probenahme_ui <- renderUI({
+    # always show it, but disable + grey it out when not applicable
+    ctl <- dateRangeInput(
+      "epi_probenahme_range",
+      "Probenahmedatum innerhalb Zeitraum (nur SURE)",
+      start = Sys.Date() - 30,
+      end   = Sys.Date(),
+      format = "yyyy-mm-dd"
+    )
+    
+    if (isTRUE(input$epi_only_sure)) {
+      ctl
+    } else {
+      tags$fieldset(disabled = "disabled", style = "opacity:0.5;", ctl)
+    }
+  })
+  
+  
+  
   epi_runs_filtered <- reactive({
     runs <- filtered_runs()
     if (nrow(runs) == 0) return(runs)
@@ -164,80 +176,102 @@ server <- function(input, output, session) {
     runs
   })
   
-epi_samples <- reactive({
-  runs <- epi_runs_filtered()
-  if (nrow(runs) == 0) return(tibble::tibble())
-
-  # collect samples across runs
-  all_samples <- purrr::pmap_dfr(
-    list(runs$pipeline_dir, runs$results_dir, runs$run),
-    function(pipeline_dir, results_dir, run_name) {
-      tryCatch({
-        df <- build_sample_table(pipeline_dir, results_dir)
-        if (is.null(df) || nrow(df) == 0) return(tibble::tibble())
-        df %>% dplyr::mutate(run = run_name)
-      }, error = function(e) {
-        dbg("epi build_sample_table error for run ", run_name, ": ", conditionMessage(e))
-        tibble::tibble()
-      })
-    }
-  )
-  if (nrow(all_samples) == 0) return(tibble::tibble())
-
-  # attach SURE metadata (cached) -> adds Importdatum, Probenahmedatum, Geburtsmonat, ...
-  sure_df <- get_sure_data()
-  all_samples <- join_sure(all_samples, sure_df)   # adds sample_md5 and SURE cols
-  if (nrow(all_samples) == 0) return(tibble::tibble())
-
-  # optional: keep only samples present in SURE
-  if (isTRUE(input$epi_only_sure)) {
-    all_samples <- samples_only_sure(all_samples)
+  epi_samples <- reactive({
+    runs <- epi_runs_filtered()
+    if (nrow(runs) == 0) return(tibble::tibble())
+    
+    # collect samples across runs
+    all_samples <- purrr::pmap_dfr(
+      list(runs$pipeline_dir, runs$results_dir, runs$run),
+      function(pipeline_dir, results_dir, run_name) {
+        tryCatch({
+          df <- build_sample_table(pipeline_dir, results_dir)
+          if (is.null(df) || nrow(df) == 0) return(tibble::tibble())
+          df %>% dplyr::mutate(run = run_name)
+        }, error = function(e) {
+          dbg("epi build_sample_table error for run ", run_name, ": ", conditionMessage(e))
+          tibble::tibble()
+        })
+      }
+    )
     if (nrow(all_samples) == 0) return(tibble::tibble())
-  }
+    
+    # attach SURE metadata (cached) -> adds Importdatum, Probenahmedatum, Geburtsmonat, ...
+    sure_df <- get_sure_data()
+    all_samples <- join_sure(all_samples, sure_df)   # adds sample_md5 and SURE cols
+    if (nrow(all_samples) == 0) return(tibble::tibble())
+    
+    # ... after you joined SURE (join_sure) and maybe filtered to SURE samples ...
 
-  # Probenahmedatum filter (use YOUR UI id: epi_probenahme_range)
+if (isTRUE(input$epi_only_sure)) {
+
+  # Filter dates after we restricted to SURE samples
+  all_samples <- samples_only_sure(all_samples)
+  if (nrow(all_samples) == 0) return(tibble::tibble())
+
   drp <- input$epi_probenahme_range
-  if (!is.null(drp) && length(drp) == 2 && !any(is.na(drp)) && "Probenahmedatum" %in% names(all_samples)) {
+  if (!is.null(drp) && length(drp) == 2 && !any(is.na(drp))) {
 
-    # ensure Date (in case it came as character)
-    all_samples <- all_samples %>%
-      dplyr::mutate(
-        Probenahmedatum = suppressWarnings(as.Date(
-          Probenahmedatum,
-          tryFormats = c("%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y")
-        ))
-      )
+    if ("Probenahmedatum" %in% names(all_samples)) {
+      all_samples <- all_samples %>%
+        dplyr::mutate(Probenahmedatum = as.Date(Probenahmedatum))
 
-    start_p <- as.Date(drp[1])
-    end_p   <- as.Date(drp[2])
+      start_p <- as.Date(drp[1])
+      end_p   <- as.Date(drp[2])
 
-    if (any(!is.na(all_samples$Probenahmedatum))) {
       all_samples <- all_samples %>%
         dplyr::filter(
           !is.na(Probenahmedatum),
           Probenahmedatum >= start_p,
           Probenahmedatum <= end_p
         )
-    } else {
-      dbg("epi: Probenahmedatum exists but all NA -> skipping filter")
     }
   }
-
-  # normalize typing columns (empty -> NA)
-  all_samples %>%
+}
+    
+    # Probenahmedatum filter (use YOUR UI id: epi_probenahme_range)
+    drp <- input$epi_probenahme_range
+    if (!is.null(drp) && length(drp) == 2 && !any(is.na(drp)) && "Probenahmedatum" %in% names(all_samples)) {
+      
+      # ensure Date (in case it came as character)
+      all_samples <- all_samples %>%
+      dplyr::mutate(
+        Probenahmedatum = suppressWarnings(as.Date(
+          Probenahmedatum,
+          tryFormats = c("%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y")
+        ))
+      )
+      
+      start_p <- as.Date(drp[1])
+      end_p   <- as.Date(drp[2])
+      
+      if (any(!is.na(all_samples$Probenahmedatum))) {
+        all_samples <- all_samples %>%
+        dplyr::filter(
+          !is.na(Probenahmedatum),
+          Probenahmedatum >= start_p,
+          Probenahmedatum <= end_p
+        )
+      } else {
+        dbg("epi: Probenahmedatum exists but all NA -> skipping filter")
+      }
+    }
+    
+    # normalize typing columns (empty -> NA)
+    all_samples %>%
     dplyr::mutate(
       subtype  = dplyr::na_if(as.character(subtype), ""),
       clade    = dplyr::na_if(as.character(clade), ""),
       subclade = dplyr::na_if(as.character(subclade), "")
     )
-})
-
-
-epi_data <- reactive({
-  x <- epi_samples()
-  if (nrow(x) == 0) return(tibble::tibble())
-
-  x %>%
+  })
+  
+  
+  epi_data <- reactive({
+    x <- epi_samples()
+    if (nrow(x) == 0) return(tibble::tibble())
+    
+    x %>%
     dplyr::filter(!is.na(subtype) | !is.na(clade) | !is.na(subclade)) %>%
     dplyr::group_by(subtype, clade, subclade) %>%
     dplyr::summarise(
@@ -246,64 +280,64 @@ epi_data <- reactive({
       .groups = "drop"
     ) %>%
     dplyr::arrange(dplyr::desc(n_samples))
-})
-
+  })
+  
   epi_line_list <- reactive({
-  x <- epi_samples()
-  if (nrow(x) == 0) return(tibble::tibble())
-
-  # first non-NA helper that works for ANY type
-  first_non_na_any <- function(v) {
-    v <- v[!is.na(v)]
-    if (length(v) == 0) return(NA)
-    v[[1]]
-  }
-
-  # for character fields: ignore empty strings too
-  first_non_empty_chr <- function(v) {
-    v <- as.character(v)
-    v <- v[!is.na(v) & nzchar(v)]
-    if (length(v) == 0) return(NA_character_)
-    v[[1]]
-  }
-
-  # robustly get first Date (keeps Date class)
-  first_date <- function(v) {
-    v <- v[!is.na(v)]
-    if (length(v) == 0) return(as.Date(NA))
-    as.Date(v[[1]])
-  }
-
-  # minimal mojibake repair (turns "mÃ¤nnlich" -> "männlich")
-  fix_mojibake <- function(v) {
-    v <- as.character(v)
-    out <- iconv(v, from = "latin1", to = "UTF-8")
-    # keep original if iconv failed
-    ifelse(is.na(out), v, out)
-  }
-
-  x %>%
+    x <- epi_samples()
+    if (nrow(x) == 0) return(tibble::tibble())
+    
+    # first non-NA helper that works for ANY type
+    first_non_na_any <- function(v) {
+      v <- v[!is.na(v)]
+      if (length(v) == 0) return(NA)
+      v[[1]]
+    }
+    
+    # for character fields: ignore empty strings too
+    first_non_empty_chr <- function(v) {
+      v <- as.character(v)
+      v <- v[!is.na(v) & nzchar(v)]
+      if (length(v) == 0) return(NA_character_)
+      v[[1]]
+    }
+    
+    # robustly get first Date (keeps Date class)
+    first_date <- function(v) {
+      v <- v[!is.na(v)]
+      if (length(v) == 0) return(as.Date(NA))
+      as.Date(v[[1]])
+    }
+    
+    # minimal mojibake repair (turns "mÃ¤nnlich" -> "männlich")
+    fix_mojibake <- function(v) {
+      v <- as.character(v)
+      out <- iconv(v, from = "latin1", to = "UTF-8")
+      # keep original if iconv failed
+      ifelse(is.na(out), v, out)
+    }
+    
+    x %>%
     dplyr::filter(!is.na(sample_md5) & nzchar(sample_md5)) %>%
     dplyr::group_by(sample_md5) %>%
     dplyr::summarise(
       runs  = paste(sort(unique(as.character(run))), collapse = ", "),
       n_runs = dplyr::n_distinct(run),
-
+      
       Probenahmedatum = first_date(Probenahmedatum),
       Geburtsmonat    = first_non_empty_chr(Geburtsmonat),
       Geburtsjahr     = first_non_empty_chr(Geburtsjahr),
       Geschlecht      = fix_mojibake(first_non_empty_chr(Geschlecht)),
       Einsender       = fix_mojibake(first_non_empty_chr(Einsender)),
-
+      
       subtype  = first_non_empty_chr(subtype),
       clade    = first_non_empty_chr(clade),
       subclade = first_non_empty_chr(subclade),
-
+      
       .groups = "drop"
     ) %>%
     dplyr::arrange(dplyr::desc(n_runs), dplyr::desc(Probenahmedatum))
-})
-
+  })
+  
   
   
   output$runs_tbl <- renderDT({
@@ -469,11 +503,11 @@ epi_data <- reactive({
     )
   })
   
-output$epi_line_tbl <- renderDT({
-  df <- epi_line_list()
-  validate(need(nrow(df) > 0, "Keine Proben für die aktuelle Auswahl."))
-
-  disp <- df %>%
+  output$epi_line_tbl <- renderDT({
+    df <- epi_line_list()
+    validate(need(nrow(df) > 0, "Keine Proben für die aktuelle Auswahl."))
+    
+    disp <- df %>%
     dplyr::transmute(
       MD5_ID = sample_md5,
       Probenahmedatum = Probenahmedatum,
@@ -487,18 +521,18 @@ output$epi_line_tbl <- renderDT({
       Runs = runs,
       `#Runs` = n_runs
     )
-
-  datatable(
-    disp,
-    rownames = FALSE,
-    options = list(
-      pageLength = 25,
-      autoWidth = FALSE,
-      scrollX = TRUE,
-      order = list(list(10, "desc"))  # #Runs descending
+    
+    datatable(
+      disp,
+      rownames = FALSE,
+      options = list(
+        pageLength = 25,
+        autoWidth = FALSE,
+        scrollX = TRUE,
+        order = list(list(10, "desc"))  # #Runs descending
+      )
     )
-  )
-})
+  })
 }
 
 shinyApp(ui, server)
