@@ -15,13 +15,19 @@
 #' @export
 #'
 #' @examples einlesen_sure()
-einlesen_sure <- function(path = "Z:/DFS-LUA-LD-Zusammenarbeit/LD-AB32.5_IfSG_Meldewesen/SURE/Daten/SURE_Export.csv") {
+einlesen_sure <- function(path = "Z:/DFS-LUA-LD-Zusammenarbeit/LD-AB32.5_IfSG_Meldewesen/SURE/Daten") {
 
-# Import data
-  data_import <- data.frame(read.csv(path, fileEncoding = "latin1",sep=';',
-                                     colClasses = c("Importdatum" = "Date",
-                                                    "Eingangsdatum" = "Date",
-                                                    "Probenahmedatum" = "Date")))
+  filename1 <- "SURE_Export.csv"
+  filename2 <- "SURE_Export_Teil1.csv"
+  complete_path1 <- file.path(path, filename1)
+  complete_path2 <- file.path(path, filename2)
+
+# Import and combine data
+  data_import <- bind_rows(
+    read.csv(complete_path1, fileEncoding = "latin1", sep = ";", colClasses = c("Importdatum" = "Date", "Eingangsdatum" = "Date", "Probenahmedatum" = "Date")),
+    read.csv(complete_path2, fileEncoding = "latin1", sep = ";", colClasses = c("Importdatum" = "Date", "Eingangsdatum" = "Date", "Probenahmedatum" = "Date"))
+  )
+
 
   # Change main variable names and add diagnostic lab
   data <- data_import %>%
