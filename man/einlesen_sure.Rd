@@ -5,8 +5,7 @@
 \title{einlesen_sure}
 \usage{
 einlesen_sure(
-  path =
-    "Z:/DFS-LUA-LD-Zusammenarbeit/LD-AB32.5_IfSG_Meldewesen/SURE/Daten/SURE_Export.csv"
+  path = "Z:/DFS-LUA-LD-Zusammenarbeit/LD-AB32.5_IfSG_Meldewesen/SURE/Daten"
 )
 }
 \arguments{

@@ -7,14 +7,16 @@
 \format{
 Eine Tabelle mit 4 Spalten, in denen Informationen zu :
 \describe{
-  \item{LD_ID}{Landkreis Identifyer, kompatibel mit SurvNet}
   \item{Meldelandkreis}{LUA RLP interne Standard-Schreibweise der Landkreise}
+  \item{GID_2}{Geo ID wie in der gadm Datenbank}
+  \item{LD_ID}{Landkreis Identifyer, kompatibel mit SurvNet}
   \item{Gesundheitsamt}{Für den Landkreis zuständiges Gesundheitsamt}
   \item{Kürzel}{LUA RLP interes Standard-Kürzel für das Gesundheitsamt}
+  \item{geom}{Polygone der Landkreis-Geometrie aus gadm}
   }
 }
 \source{
-Compiled by Anja Schoeps
+Compiled by Anja Schoeps with additions by Emanuel Heitlinger
 }
 \usage{
 data(geo_standards)
