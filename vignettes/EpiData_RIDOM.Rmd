@@ -13,7 +13,7 @@ vignette: >
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Erzeugen eines RIDOM-kompatiblen Datensatzes mit epidemiologischen Daten
+# Erzeugen eines RIDOM-kompatiblen Datensatzes mit epidemiologischen Daten
 
 Die Funktion `create_Epidata()` ist das zentrale Werkzeug zur Generierung eines Excel-Exports aus aktuellen SurvNet-Daten, der direkt in die RIDOM-Datenbank übernommen werden kann. Dabei werden die Daten automatisiert aufbereitet, mit Geoinformationen und Gesundheitsamtskürzeln ergänzt und mit Labordaten aus unserem LIMS verknüpft.
 
@@ -21,10 +21,48 @@ Die Funktion `create_Epidata()` ist das zentrale Werkzeug zur Generierung eines 
 library(luaRlp)
 ```
 
-Nach dem laden unseres Pakets (mit `library(luaRlp)`). Lässt sich die Funktion wie folgt ausführen:
+Nach dem Laden unseres Pakets lässt sich die Funktion ohne weitere Argumente ausführen. 
+```{r pseudoEx, eval=FALSE}
+library(luaRlp)
+create_Epidata()
+```
+
+Damit ist im Regelfall der R-Teil des Epi-Daten Imports erledigt. Dei erzeugten Daten (Default in Verzeichnis
+`O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Import/`) sind zum Einlesen in RIDOM Seqsphere 
+bereit. 
+
+Im Folgenden stellt diese Vignette Details dar um das Prinzip der Datenflüsse zur erklären und um ggf. auftretende Fehler und Probleme zu beheben. 
+
+## Konfiguration der SurvNet-Verbindung (ODBC DSN)
+
+`create_Epidata()` liest SurvNet-Daten über ODBC ein. Der Name der ODBC-Datenquelle
+(DSN) wird im Paket über die globale Option `survnet.dsn` gesteuert.
+
+- `get_survnet_dsn()` liefert den aktuell konfigurierten DSN, die auch beim Laden des Pakets angezeigt wird. 
+   Diese wird verwendet!
+- `autodetect_survnet_dsn()` kann (auf Wunsch) einen passenden DSN im System suchen
+  (standardmäßig Pattern `surv.*net`, case-insensitive) und die Option setzen.
+
+```{r odbctest}
+## aktuelle Konfiguration abfragen 
+get_survnet_dsn()
+
+## aktuelle Konfiguration durch Detektieren der SurvNet Datenbank überschreiben.  
+autodetect_survnet_dsn()
+
+## Nochmal die nun aktuelle Konfiguration abfragen 
+get_survnet_dsn()
+```
+
+
+Zur korrekten Konfiguration der Datenquelle kontaktieren Sie bei Problemen bitte per Flurfunk oder E-Mail [Emanuel Heitlinger und Anja Schoeps](mailto:anja.schoeps@lua.rlp.de;%20emanuel.heitlinger@lua.rlp.de).
+
+
+## Hintergründe und Inspektion der Daten aus der SurvNet-Verbindung
+
 
 ```{r topLevel}
-Epidata4Import <- create_Epidata(LIMS_link_file = "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Export Merger/Import2.csv")
+Epidata4Import <- create_Epidata()
 ```
 
 Dafür wird ein Export aus unserem LIMS benötigt, dieser wird automatisch erstellt und unter `O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS_Export_auto/LIMS_Export.csv` abgelegt. Die Funktion liest diesen Export (als default) ein, lass sich aber auch (mit dem Argument `LIMS_link_file`) anders konfigurieren.
@@ -34,7 +72,7 @@ Dadurch wird eine Dateien zm Import in RIDOM ("Import Metadata") generiert. Dies
 Soll darüber hinaus eine Datei mit "problematischen Einträgen" aus dem LIMS generiert werden kann dies mithilfe des folgenden Codes geschehen:
 
 ```{r problems}
-Epidata4Import <- create_Epidata(LIMS_link_file = "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Export Merger/Import2.csv", 
+Epidata4Import <- create_Epidata(
                 problems = "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Export Merger/Problems.csv")
 ```
 
@@ -48,7 +86,7 @@ Gibt es Probleme die nicht anhand der entstehenden Dateien offensichtlich sind, 
 
 ```{r}
 ## SurvNet Rohdaten 
-Snet <- import_SurvNet()
+Snet <- import_SurvNet(build_query(Thema = "IMS"))
 
 any(Snet$Aktenzeichen%in%"SAL2024-2072")
 
@@ -56,12 +94,4 @@ any(Snet$Aktenzeichen%in%"SAL2024-2072")
 
 Dieser Code überprüft z.B. ob ein Aktenzeichen in seiner Roh-Form im Datensatz vorhanden ist.
 
-## Hinweis zur ODBC-Verbindung
 
-Die Funktion `import_SurvNet()` erwartet genau *eine* gültige ODBC-Quelle. Wenn keine oder mehrere Quellen gefunden werden, erscheint eine von zwei Fehlermeldungen:
-
--   Multiple potential SurvNet data sources detected
-
--   No data source detected. Please configure ODBC.
-
-Zur korrekten Konfiguration der Datenquelle kontaktieren Sie bei Problemen bitte per Flurfunk oder E-Mail [Emanuel Heitlinger und Anja Schoeps](mailto:anja.schoeps@lua.rlp.de;%20emanuel.heitlinger@lua.rlp.de).

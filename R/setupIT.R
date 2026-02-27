@@ -10,6 +10,121 @@
 
 
 
+#' Ermittelt den konfigurierten SurvNet-ODBC-DSN
+#'
+#' Gibt den Namen der ODBC-Datenquelle (DSN) zurück, die für den Zugriff auf die
+#' SurvNet-Datenbank verwendet wird. Der DSN wird über die globale R-Option
+#' \code{"survnet.dsn"} konfiguriert.
+#'
+#' Falls die Option nicht gesetzt ist, bricht die Funktion mit einer
+#' aussagekräftigen Fehlermeldung ab.
+#'
+#' @details
+#' Beim Laden des Pakets \pkg{luaRlp} wird – sofern die Option noch nicht gesetzt
+#' ist – ein Standardwert (\code{"SurvNet_datenbank"}) gesetzt. Dieser Standard
+#' kann jederzeit durch den Benutzer überschrieben werden, z.\,B. für Test- oder
+#' Produktivumgebungen.
+#'
+#' @return
+#' Ein Zeichenstring der Länge 1 mit dem Namen des ODBC-DSN.
+#'
+#' @examples
+#' \dontrun{
+#' # Verwendung des Standard-DSN (falls auf dem System vorhanden)
+#' get_survnet_dsn()
+#'
+#' # Explizites Überschreiben des DSN
+#' options(survnet.dsn = "SurvNetDB_Test")
+#' get_survnet_dsn()
+#' }
+#'
+#' @seealso
+#' \code{\link{autodetect_survnet_dsn}} zum automatischen Finden und Setzen eines passenden DSN. \cr
+#' \code{\link[base]{options}}
+#'
+#' @export
+get_survnet_dsn <- function() {
+  dsn <- getOption("survnet.dsn")
+  if (is.null(dsn)) {
+    stop(
+      "Option 'survnet.dsn' ist nicht gesetzt.\n",
+      "Bitte setze sie mit options(survnet.dsn = \"<DSN>\").",
+      call. = FALSE
+    )
+  }
+  dsn
+}
+
+
+
+#' Automatisches Erkennen und Setzen des SurvNet-ODBC-DSN
+#'
+#' Sucht in den auf dem System verfügbaren ODBC-Datenquellen (DSNs) nach einem
+#' Eintrag, der zu SurvNet passt, und setzt anschließend die globale R-Option
+#' \code{"survnet.dsn"} auf den gefundenen DSN-Namen.
+#'
+#' Standardmäßig wird per regulärem Ausdruck (case-insensitive) nach
+#' \code{"surv.*net"} gesucht.
+#'
+#' @details
+#' Das automatische Erkennen ist bewusst als **explizite** Hilfsfunktion
+#' implementiert (kein stilles „Guessing“ beim Laden des Pakets), damit das
+#' Verhalten nachvollziehbar bleibt – insbesondere wenn mehrere DSNs in Frage
+#' kommen (z.\,B. Test/Prod).
+#'
+#' Verhalten:
+#' \itemize{
+#'   \item \strong{0 Treffer}: Gibt \code{NULL} zurück und gibt eine Meldung aus.
+#'   \item \strong{1 Treffer}: Setzt \code{options(survnet.dsn = "<Treffer>")} und gibt den DSN zurück.
+#'   \item \strong{>1 Treffer}: Bricht mit Fehler ab und listet die Treffer, damit man manuell wählen kann.
+#' }
+#'
+#' @param pattern Regulärer Ausdruck zur Suche in den DSN-Namen.
+#'
+#' @return
+#' Bei genau einem Treffer: Zeichenstring (DSN-Name). Bei 0 Treffern:
+#' \code{NULL} (invisibly). Bei mehreren Treffern wird ein Fehler geworfen.
+#'
+#' @examples
+#' \dontrun{
+#' # automatische Erkennung mit Default-Pattern
+#' autodetect_survnet_dsn()
+#'
+#' # eigenes Pattern (z.B. abweichende Namenskonvention)
+#' autodetect_survnet_dsn(pattern = "^SurvNet")
+#'
+#' # danach kann der DSN z.B. so abgefragt werden:
+#' get_survnet_dsn()
+#' }
+#'
+#' @seealso
+#' \code{\link{get_survnet_dsn}} zur Abfrage des aktuell konfigurierten DSN. \cr
+#' \code{\link[odbc]{odbcListDataSources}} für die zugrundeliegende DSN-Liste. \cr
+#' \code{\link[base]{options}} zum manuellen Setzen der Option.
+#'
+#' @export
+autodetect_survnet_dsn <- function(pattern = "surv.*net") {
+  dsns <- odbc::odbcListDataSources()$name
+  hits <- dsns[grepl(pattern, dsns, ignore.case = TRUE)]
+
+  if (length(hits) == 0) {
+    message("❌ Kein passender SurvNet-DSN gefunden (Pattern: ", pattern, ").")
+    return(invisible(NULL))
+  }
+
+  if (length(hits) > 1) {
+    message("⚠️ Mehrere mögliche DSNs gefunden:")
+    message(paste(" -", hits))
+    stop("Bitte DSN manuell auswählen und mit options(survnet.dsn = \"<DSN>\") setzen.", call. = FALSE)
+  }
+
+  options(survnet.dsn = hits[[1]])
+  message("✅ SurvNet-DSN gesetzt auf: ", hits[[1]])
+
+  invisible(hits[[1]])
+}
+
+
 
 
 #' lua_is_online Überprüfe ob R online-Zugang hat

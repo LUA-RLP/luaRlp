@@ -30,7 +30,8 @@ Imports: odbc,
     zip,
     shinycssloaders,
     kableExtra,
-    writexl
+    writexl,
+    openssl
 Suggests: rmarkdown,
     knitr
 VignetteBuilder: knitr

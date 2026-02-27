@@ -147,12 +147,16 @@ build_query <- function(Thema=NULL, Periode=c("alle","last2weeks","thisyear","la
 #'
 #' @import odbc
 #'
+#' @seealso
+#' \code{\link{ get_survnet_dsn}} zum Abfragen der aktuellen SurvNet-dsn Konfiguration. \cr
+#' \code{\link{autodetect_survnet_dsn}} zum automatischen Finden und Setzen eines passenden DSN.
+#'
 #' @export
 #'
 #' @examples
 #' SurvNet_data <- import_SurvNet(build_query(Thema="Tageskontrolle")
 #'
-import_SurvNet <- function(query,  dsn = "SurvNet_datenbank"){
+import_SurvNet <- function(query,  dsn = get_survnet_dsn()){
   if (is.null(dsn)) {
     dsn <- odbc::odbcListDataSources()$name
   }
