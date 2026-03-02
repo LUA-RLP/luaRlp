@@ -86,3 +86,49 @@
 #' data(geo_standards)
 "geo_standards"
 
+
+#' themes_list
+#'
+#' Liste der Themen, die standardmäßig aus SurvNet abgefragt werden können
+#'
+#' Jedem Themenbereich, der mittels \code{\link{import_SurvNet}} standardmäßig
+#' abgefragt werden kann, sind die passenden SQL-Blöcke zugeordnet. Diese SQL-Blöcke
+#' werden in \code{\link{build_query}} verknüpft, um die finale Abfrage zu generieren.
+#'
+#' Dieser Datensatz enthält alle Themen, die in \code{build_query} angegeben werden können.
+#' Jeder Eintrag besteht aus einem Themenbereich und den zugehörigen SQL-Blöcken,
+#' die für die Abfrage verwendet werden.
+#'
+#' @docType data
+#' @usage data(themes_list)
+#'
+#' @format Eine Tabelle mit 4 Spalten, mit folgenden SQL-Blöcken :
+#' \describe{
+#'   \item{Thema}{Name des Themas}
+#'   \item{Select}{Passender Select-Block für das jeweilige Thema}
+#'   \item{From}{Passender From-Block für das jeweilige Thema}
+#'   \item{Where}{Passender Where-Block für das jeweilige Thema}
+#'   }
+#' @source Compiled by Anja Schoeps
+#' @examples
+#' data(themes_list)
+"themes_list"
+
+
+#' IdType_Datensatzkategorie
+#'
+#' Eine Tabelle mit 2 Spalten, die dem Code für IdType in SurvNet die
+#' korrekte Bezeichnung der Meldekategorie zuordnet
+#'
+#' @docType data
+#' @usage data(IdType_Datensatzkategorie)
+#'
+#' @format Eine Tabelle mit 2 Spalten:
+#' \describe{
+#'   \item{IdType}{Vom RKI benutzte Kodierung (3 Ziffern)}
+#'   \item{Datensatzkategorie}{ausformulierte Meldekategorie}
+#'   }
+#' @source Compiled by Anja Schoeps (from SurvNet)
+#' @examples
+#' data(IdType_Datensatzkategorie)
+"IdType_Datensatzkategorie"
