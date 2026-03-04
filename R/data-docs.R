@@ -132,3 +132,43 @@
 #' @examples
 #' data(IdType_Datensatzkategorie)
 "IdType_Datensatzkategorie"
+
+
+#' Regionen
+#'
+#' Eine Tabelle mit 2 Spalten, die dem Code für Region_ID in SurvNet die
+#' korrekte Bezeichnung der Region zuordnet. Diese Variable wird für die
+#' Zuordnung der Expositionsorte benutzt
+#'
+#' @docType data
+#' @usage data(Regionen)
+#'
+#' @format Eine Tabelle mit 2 Spaltn:
+#' \describe{
+#'   \item{ID_Region}{Vom RKI benutzte Kodierung (gewöhnlich 8 Ziffern)}
+#'   \item{Angabe_zum_Expositionsort}{ausformulierter Expositionsort}
+#'   }
+#' @source Compiled by Anja Schoeps
+#' @examples
+#' data(Regionen)
+"Regionen"
+
+
+#' pathogen_dictionary
+#'
+#' Eine Tabelle mit 2 Spalten, die dem Code für die Pathogene in SurvNet die
+#' korrekte Bezeichnung des Erregers/Serovars zuordnet.
+#' Diese Datei wird von der Funktion add_values() benutzt.
+#'
+#' @docType data
+#' @usage data(pathogen_dictionary)
+#'
+#' @format Eine Tabelle mit 2 Spalten:
+#' \describe{
+#'   \item{Pathogen_ID}{Vom RKI benutzte Kodierung (gewöhnlich 7 Ziffern)}
+#'   \item{Erreger}{ausformulierter Erreger/Serovar}
+#'   }
+#' @source Compiled by Anja Schoeps
+#' @examples
+#' data(pathogen_dictionary)
+"pathogen_dictionary"

@@ -293,29 +293,12 @@ add_values <- function(df) {
     df <- df[!duplicated(df$IdRecord), ]
   }
 
-  # Merge nur, wenn PathogenABV_ID existiert
-  if ("PathogenABV_ID" %in% names(df)) {
-    df <- merge(df, PathogenABV, all.x=TRUE, by = "PathogenABV_ID")
-    df$PathogenABV_ID <- NULL
+  # Merge nur, wenn Pathogen_ID existiert
+  if ("Pathogen_ID" %in% names(df)) {
+    df <- merge(df, pathogen_dictionary, all.x=TRUE, by = "Pathogen_ID")
+    df$Pathogen_ID <- NULL
   }
 
-  # Merge nur, wenn PathogenWBK_ID existiert
-  if ("PathogenWBK_ID" %in% names(df)) {
-    df <- merge(df, PathogenWBK, all.x=TRUE, by = "PathogenWBK_ID")
-    df$PathogenWBK_ID <- NULL
-  }
-
-  # Merge nur, wenn PathogenVHF_ID existiert
-  if ("PathogenVHF_ID" %in% names(df)) {
-    df <- merge(df, PathogenVHF, all.x=TRUE, by = "PathogenVHF_ID")
-    df$PathogenVHF_ID <- NULL
-  }
-
-    # Merge nur, wenn PathogenSAL_ID existiert
-  if ("PathogenSAL_ID" %in% names(df)) {
-    df <- merge(df, PathogenSAL, all.x=TRUE, by = "PathogenSAL_ID")
-    df$PathogenSAL_ID <- NULL
-  }
 
   #Unnötige oder doppelte Spalten entfernen
   spalten_entfernen <- c("Eigentuemer", "AtGACreated", "AtLSCreated", "GültigAb_DMYhs", "IdType", "LK_ID", "Kürzel", "PlaceOfInf_")
