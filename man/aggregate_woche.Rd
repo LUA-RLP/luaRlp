@@ -2,26 +2,37 @@
 % Please edit documentation in R/Einlesen_und_Aufbereiten_SURE.R
 \name{aggregate_woche}
 \alias{aggregate_woche}
-\title{Title}
+\title{Funktion zum Aggregieren der aufbereiteten SURE-Daten aus einlesen_sure() nach KW und Jahr}
 \usage{
 aggregate_woche(sure_data, week, year)
 }
 \arguments{
 \item{sure_data}{Datei, die mit der Funktion einlesen_sure() erzeugt wird}
 
-\item{week}{Die Kalenderwoche, die abgefragt wird. Auswahl zwischen "all", "current", "previous52" und einer Zahl bzw. einer Liste von Zahlen}
+\item{week}{Die Kalenderwoche, die abgefragt wird. Auswahl zwischen "all", "current", "previous52" und einer Zahl bzw. einer Liste von Zahlen \\
+Auswahl:
+\itemize{
+  \item "all" - alle Wochen
+  \item "current" - nur die aktuelle Woche (letzte abgeschlossene KW)
+  \item "previous52" - die letzten 52 KW (nur sinnvoll mit year = "all")}}
 
-\item{year}{Das Jahr, die abgefragt wird. Auswahl zwischen "all", "current", "previous2" und einer Zahl bzw. einer Liste von Zahlen}
+\item{year}{Das Jahr, die abgefragt wird. Auswahl zwischen "all", "current", "previous2" und einer Zahl bzw. einer Liste von Zahlen \\
+Auswahl:
+\itemize{
+  \item "all" - alle Jahre
+  \item "current" - aktuelles Jahr (letzte abgeschlossene KW)
+  \item "previous2" - aktuelles Jahr und das vorhergehende}}
 }
 \value{
 Aggregierter Datenframe mit ausgewählten Wochen
 }
 \description{
-Title
+Funktion zum Aggregieren der aufbereiteten SURE-Daten aus einlesen_sure() nach KW und Jahr
 }
 \examples{
 aggregate_woche(,"current","current")
 aggregate_woche(,"all","all")
+aggregate_woche(,"previous52","all")
 aggregate_woche(,c(1,2,3),2025)
 
 }

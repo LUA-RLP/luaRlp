@@ -186,7 +186,7 @@ einlesen_sure <- function(path = "Z:/DFS-LUA-LD-Zusammenarbeit/LD-AB32.5_IfSG_Me
 data <- data %>%
   mutate(
     Alter = as.numeric(base_datum - birthday) / 365.25,
-    Altersgruppen3 = cut(
+    Altersgruppen = cut(
       Alter,
       breaks = c(0, 2, 6, 18, 40, 60, 120),
       labels = c("<2 Jahre", "2-5 Jahre", "6-17 Jahre", "18-39 Jahre",
@@ -255,11 +255,21 @@ data <- data %>%
 
 # Aggregate data frame by calendar week and year and calculate additional variables for presentation
 
-#' Title
+#' @title Funktion zum Aggregieren der aufbereiteten SURE-Daten aus einlesen_sure() nach KW und Jahr
 #'
 #' @param sure_data Datei, die mit der Funktion einlesen_sure() erzeugt wird
-#' @param week Die Kalenderwoche, die abgefragt wird. Auswahl zwischen "all", "current", "previous52" und einer Zahl bzw. einer Liste von Zahlen
-#' @param year Das Jahr, die abgefragt wird. Auswahl zwischen "all", "current", "previous2" und einer Zahl bzw. einer Liste von Zahlen
+#' @param week Die Kalenderwoche, die abgefragt wird. Auswahl zwischen "all", "current", "previous52" und einer Zahl bzw. einer Liste von Zahlen \\
+#'   Auswahl:
+#'   \itemize{
+#'     \item "all" - alle Wochen
+#'     \item "current" - nur die aktuelle Woche (letzte abgeschlossene KW)
+#'     \item "previous52" - die letzten 52 KW (nur sinnvoll mit year = "all")}
+#' @param year Das Jahr, die abgefragt wird. Auswahl zwischen "all", "current", "previous2" und einer Zahl bzw. einer Liste von Zahlen \\
+#'   Auswahl:
+#'   \itemize{
+#'     \item "all" - alle Jahre
+#'     \item "current" - aktuelles Jahr (letzte abgeschlossene KW)
+#'     \item "previous2" - aktuelles Jahr und das vorhergehende}
 #'
 #' @return Aggregierter Datenframe mit ausgewählten Wochen
 #' @export
@@ -267,6 +277,7 @@ data <- data %>%
 #' @examples
 #' aggregate_woche(,"current","current")
 #' aggregate_woche(,"all","all")
+#' aggregate_woche(,"previous52","all")
 #' aggregate_woche(,c(1,2,3),2025)
 #'
 aggregate_woche <- function(sure_data,week,year) {
@@ -276,37 +287,35 @@ aggregate_woche <- function(sure_data,week,year) {
     group_by(Jahr, Woche) %>%
     summarise(einsendungen = n_distinct(einsender), .groups = "drop")
 
+
   # correct pathogen variables for multiple infections
-  df_summary <- sure_data %>%
+
+  virus_vars <- c("SARS", "InfluA", "InfluB", "RSV",
+                  "Rhino", "Parainflu", "Adeno", "Metapneu")
+
+   df <- sure_data %>%
     mutate(
-      SARS_crude = SARS,
-      InfluA_crude = InfluA,
-      InfluB_crude = InfluB,
-      influenza_crude = influenza,
-      RSV_crude = RSV,
-      SARS = ifelse(SARS == 1 & multi == 1, 0, SARS),
-      InfluA = ifelse(InfluA == 1 & multi == 1, 0, InfluA),
-      InfluB = ifelse(InfluB == 1 & multi == 1, 0, InfluB),
-      influenza = ifelse(influenza == 1 & multi == 1, 0, influenza),
-      RSV = ifelse(RSV == 1 & multi == 1, 0, RSV)
+      multi = if_else(rowSums(across(all_of(virus_vars)) == 1, na.rm = TRUE) > 1, 1, 0)
+    )
+
+  df <- df %>%
+    mutate(
+      across(all_of(virus_vars),
+        ~ if_else(multi == 1, 0, .),
+        .names = "{.col}_crude"
+      )
     )
 
   # Aggregate data on week and year level
-  df_summary <- df_summary %>%
+
+  df_summary <- df %>%
     group_by(Jahr, Woche) %>%
     summarise(
       anzahl = n(),
-      SARS = sum(SARS, na.rm = TRUE),
-      InfluA = sum(InfluA, na.rm = TRUE),
-      InfluB = sum(InfluB, na.rm = TRUE),
-      influenza = sum(influenza, na.rm = TRUE),
-      RSV = sum(RSV, na.rm = TRUE),
+      across(all_of(virus_vars), ~ sum(.x, na.rm = TRUE)),
+      across(paste0(virus_vars, "_crude"), ~ sum(.x, na.rm = TRUE)),
       multi = sum(multi, na.rm = TRUE),
-      SARS_crude = sum(SARS_crude, na.rm = TRUE),
-      InfluA_crude = sum(InfluA_crude, na.rm = TRUE),
-      InfluB_crude = sum(InfluB_crude, na.rm = TRUE),
-      influenza_crude = sum(influenza_crude, na.rm = TRUE),
-      RSV_crude = sum(RSV_crude, na.rm = TRUE)
+      .groups = "drop"
     )
 
   #Make sure, there are no missing weeks and delete potential remaining erroneous date values
@@ -323,71 +332,75 @@ aggregate_woche <- function(sure_data,week,year) {
     filter(!(Woche>lubridate::isoweek(Sys.Date() - 7) & Jahr >= year(Sys.Date() - 7))) %>%
     filter(!Woche==53) #wir hassen KW 53
 
-
   # Merge with number of mail sendings per week and year
   df_summary <- merge(df_summary, einsendungen_data, by = c("Jahr", "Woche"), all.x = TRUE)
 
   # Calculate moving averages (last 4 weeks)
-  df_summary <- df_summary %>%
-    arrange(Jahr, Woche) %>%
-    mutate(
-      anzahl_ma = lag(anzahl, 1) + lag(anzahl, 2) + lag(anzahl, 3) + anzahl,
-      SARS_ma = lag(SARS, 1) + lag(SARS, 2) + lag(SARS, 3) + SARS,
-      InfluA_ma = lag(InfluA, 1) + lag(InfluA, 2) + lag(InfluA, 3) + InfluA,
-      InfluB_ma = lag(InfluB, 1) + lag(InfluB, 2) + lag(InfluB, 3) + InfluB,
-      RSV_ma = lag(RSV, 1) + lag(RSV, 2) + lag(RSV, 3) + RSV,
-      multi_ma = lag(multi, 1) + lag(multi, 2) + lag(multi, 3) + multi,
-      einsendungen_ma = lag(einsendungen, 1) + lag(einsendungen, 2) + lag(einsendungen, 3) + einsendungen
-    )
+    vars_ma <- c(
+    virus_vars, "anzahl", "multi", "einsendungen",
+    paste0(virus_vars, "_crude")
+  )
 
-  # Calculate proportions (in %) and create variables for graph
-  df_summary <- df_summary %>%
-    mutate(across(starts_with("SARS_ma"):starts_with("RSV_ma"), ~ . / einsendungen_ma, .names = "prop_{.col}")) %>%
-    mutate(across(starts_with("SARS_crude"):starts_with("RSV_crude"), ~ . / anzahl, .names = "anteil_{.col}")) %>%
-    mutate(Datum = as.Date(paste(Jahr, Woche, 1, sep = "-"), "%Y-%U-%u")) %>%
-    mutate(negativ = anzahl - (SARS + InfluA + InfluB + RSV + multi)) %>%
-    mutate(pos_real = (SARS + influenza + RSV),
-           prop_real = pos_real / anzahl,
-           Numerus_anzahl = ifelse(anzahl == 1, "Probe", "Proben"),
-           Numerus_SARS = ifelse(SARS_crude == 1, "Nachweis", "Nachweise"),
-           Numerus_influenza = ifelse(influenza_crude == 1, "Nachweis", "Nachweise"),
-           Numerus_RSV = ifelse(RSV_crude == 1, "Nachweis", "Nachweise"),
-           Numerus_multi = ifelse(multi == 1, "Probe", "Proben")
-    )
-
-  #set filter for year and week based on the parameters year and week
-
-  if (length(week) == 1 && week=="current") {
     df_summary <- df_summary %>%
-    filter(Woche==lubridate::isoweek(Sys.Date() - 7))
-  } else if (length(week) == 1 && week=="all") {
-        df_summary <- df_summary
-  } else if (length(week) == 1 && week=="previous52") {
+      arrange(Jahr, Woche) %>%
+      mutate(
+        across(
+          all_of(vars_ma),
+          ~ . + lag(., 1) + lag(., 2) + lag(., 3),
+          .names = "{.col}_ma"
+        )
+      )
+
+    # Calculate combined influenza variable
     df_summary <- df_summary %>%
-      filter(!(Woche <= lubridate::isoweek(Sys.Date() - 7) & Jahr < year(Sys.Date() - 7)))
-  } else if (is.numeric(week)) {
-        df_summary <- df_summary %>%
+      mutate(
+        influenza = coalesce(InfluA, 0) + coalesce(InfluB, 0),
+        influenza_crude = coalesce(InfluA_crude, 0) + coalesce(InfluB_crude, 0),
+        influenza_ma = coalesce(InfluA_ma, 0) + coalesce(InfluB_ma, 0),
+        influenza_crude_ma = coalesce(InfluA_crude_ma, 0) + coalesce(InfluB_crude_ma, 0)
+      )
+
+    #Set filter for year and week based on the parameters year and week
+
+    current_week <- isoweek(Sys.Date() - 7)
+    current_year <- year(Sys.Date() - 7)
+
+    if (length(week) == 1 && week=="current") {
+      df_summary <- df_summary %>%
+        filter(Woche==current_week)
+    } else if (length(week) == 1 && week=="all") {
+      df_summary <- df_summary
+    } else if (length(week) == 1 && week=="previous52") {
+      df_summary <- df_summary %>%
+        filter((Jahr == current_year & Woche <= current_week)  |  (Jahr == current_year - 1 & Woche > current_week))
+    } else if (is.numeric(week)) {
+      df_summary <- df_summary %>%
         filter(Woche %in% week)
-  } else {
-    message("Für 'week' bitte 'current', 'all' oder ein numerisches Element angeben!")
-  }
+    } else {
+      message("Für 'week' bitte 'current', 'all', 'previous52' oder ein numerisches Element angeben!")
+    }
 
 
-  if (length(year) == 1 && year=="current") {
-    df_summary <- df_summary %>%
-      filter(Jahr==year(Sys.Date() - 7))
-  } else if (length(year) == 1 && year=="all") {
-    df_summary <- df_summary
-  } else if (length(year) == 1 && year=="previous2") {
-    df_summary <- df_summary %>%
-      filter(Jahr==year(Sys.Date() - 7) | Jahr==year(Sys.Date() - 372))
-  } else if (is.numeric(year)) {
-    df_summary <- df_summary %>%
-      filter(Jahr %in% year)
-  } else{
-    message("Für 'year' bitte 'current', 'all', 'previous2' oder ein numerisches Element angeben!")
-  }
+    if (length(year) == 1 && year=="current") {
+      df_summary <- df_summary %>%
+        filter(Jahr==current_year)
+    } else if (length(year) == 1 && year=="all") {
+      df_summary <- df_summary
+    } else if (length(year) == 1 && year=="previous2") {
+      df_summary <- df_summary %>%
+        filter(Jahr==current_year | Jahr==year(Sys.Date() - 372))
+    } else if (is.numeric(year)) {
+      df_summary <- df_summary %>%
+        filter(Jahr %in% year)
+    } else{
+      message("Für 'year' bitte 'current', 'all', 'previous2' oder ein numerisches Element angeben!")
+    }
 
-df_summary
+  return(df_summary)
 }
+
+
+
+
+
 
