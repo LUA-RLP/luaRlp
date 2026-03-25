@@ -4,7 +4,7 @@
 \alias{aggregate_woche}
 \title{Funktion zum Aggregieren der aufbereiteten SURE-Daten aus einlesen_sure() nach KW und Jahr}
 \usage{
-aggregate_woche(sure_data, week, year)
+aggregate_woche(sure_data, week, year, group_by_age = FALSE)
 }
 \arguments{
 \item{sure_data}{Datei, die mit der Funktion einlesen_sure() erzeugt wird}
@@ -22,6 +22,10 @@ Auswahl:
   \item "all" - alle Jahre
   \item "current" - aktuelles Jahr (letzte abgeschlossene KW)
   \item "previous2" - aktuelles Jahr und das vorhergehende}}
+
+\item{group_by_age}{Für manche Auswertungen müssen die Variablen nicht nur über KW und Jahr sondern auch über die Altersgruppen aggregiert werden
+Standardmäßig ist dieser Parameter auf FALSE gesetzt. Sollte eine Gruppierung nach Altersgruppen gewünscht sein,
+muss hier group_by_age = TRUE eingegeben werden.}
 }
 \value{
 Aggregierter Datenframe mit ausgewählten Wochen

@@ -270,6 +270,9 @@ data <- data %>%
 #'     \item "all" - alle Jahre
 #'     \item "current" - aktuelles Jahr (letzte abgeschlossene KW)
 #'     \item "previous2" - aktuelles Jahr und das vorhergehende}
+#' @param group_by_age Für manche Auswertungen müssen die Variablen nicht nur über KW und Jahr sondern auch über die Altersgruppen aggregiert werden
+#'                    Standardmäßig ist dieser Parameter auf FALSE gesetzt. Sollte eine Gruppierung nach Altersgruppen gewünscht sein,
+#'                    muss hier group_by_age = TRUE eingegeben werden.
 #'
 #' @return Aggregierter Datenframe mit ausgewählten Wochen
 #' @export
@@ -280,11 +283,18 @@ data <- data %>%
 #' aggregate_woche(,"previous52","all")
 #' aggregate_woche(,c(1,2,3),2025)
 #'
-aggregate_woche <- function(sure_data,week,year) {
+aggregate_woche <- function(sure_data, week, year, group_by_age = FALSE) {
+
+  #Gruppierung mit oder ohne Altersgruppe
+  group_vars <- c("Jahr", "Woche")
+
+  if (group_by_age) {
+    group_vars <- c(group_vars, "Altersgruppen")
+  }
 
   # Calculate number of mail sendings received per week and year
   einsendungen_data <- sure_data %>%
-    group_by(Jahr, Woche) %>%
+    group_by(across(all_of(group_vars))) %>%
     summarise(einsendungen = n_distinct(einsender), .groups = "drop")
 
 
@@ -309,7 +319,7 @@ aggregate_woche <- function(sure_data,week,year) {
   # Aggregate data on week and year level
 
   df_summary <- df %>%
-    group_by(Jahr, Woche) %>%
+    group_by(across(all_of(group_vars))) %>%
     summarise(
       anzahl = n(),
       across(all_of(virus_vars), ~ sum(.x, na.rm = TRUE)),
@@ -321,19 +331,28 @@ aggregate_woche <- function(sure_data,week,year) {
   #Make sure, there are no missing weeks and delete potential remaining erroneous date values
 
   #create complete list of weeks and years
-  alle_wochen <- expand.grid(
-    Jahr = unique(df_summary$Jahr),
-    Woche = 1:52
-  )
+  if (group_by_age) {
+    alle_wochen <- expand.grid(
+      Jahr = unique(df_summary$Jahr),
+      Woche = 1:52,
+      Altersgruppen = unique(df_summary$Altersgruppen)
+    )
+  } else {
+    alle_wochen <- expand.grid(
+      Jahr = unique(df_summary$Jahr),
+      Woche = 1:52
+    )
+  }
 
   # Merge with data frame
-  df_summary <- full_join(alle_wochen, df_summary, by = c("Jahr", "Woche")) %>%
+  df_summary <- full_join(alle_wochen, df_summary, by = group_vars) %>%
     filter(!(Woche < 4 & Jahr <= 2023)) %>%
     filter(!(Woche>lubridate::isoweek(Sys.Date() - 7) & Jahr >= year(Sys.Date() - 7))) %>%
     filter(!Woche==53) #wir hassen KW 53
 
   # Merge with number of mail sendings per week and year
-  df_summary <- merge(df_summary, einsendungen_data, by = c("Jahr", "Woche"), all.x = TRUE)
+  df_summary <- df_summary %>%
+    left_join(einsendungen_data, by = group_vars)
 
   # Calculate moving averages (last 4 weeks)
     vars_ma <- c(
@@ -342,14 +361,16 @@ aggregate_woche <- function(sure_data,week,year) {
   )
 
     df_summary <- df_summary %>%
-      arrange(Jahr, Woche) %>%
+      arrange(Jahr, Woche, .by_group = FALSE) %>%
+      group_by(across(all_of(setdiff(group_vars, "Woche")))) %>%
       mutate(
         across(
           all_of(vars_ma),
           ~ . + lag(., 1) + lag(., 2) + lag(., 3),
           .names = "{.col}_ma"
         )
-      )
+      ) %>%
+      ungroup()
 
     # Calculate combined influenza variable
     df_summary <- df_summary %>%
