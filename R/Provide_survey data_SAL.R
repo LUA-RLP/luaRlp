@@ -3,7 +3,7 @@
 #'
 #' @description Diese Funktion wird immer ausgeführt, wenn neue Fragebogendaten für die GÄ zur Verfügung //
 #' gestellt werden sollen. Davor muss das File aus EUSurvey im u.g. Ordner abgelegt werden. Die Ergebnisse finden //
-#' sich dann hier: "Z:\DFS-LUA-LD-Zusammenarbeit\LD-AB32.5_IfSG_Meldewesen\IMS\Fragebogeninhalte_fuer_GÄ\FragebogenSAL"
+#' sich dann hier: "Z:/DFS-LUA-LD-Zusammenarbeit/LD-AB32.5_IfSG_Meldewesen/Erreger/Salmonellen/Salmonellen_IMS/Fragebogen/Fragebogeninhalte_fuer_GÄ/FragebogenSAL"
 #'
 #' @import readxl
 #' @import openxlsx
@@ -12,7 +12,7 @@
 
 Fragebogen_fuer_GAE <- function() {
 
-file <- "Z:/DFS-LUA-LD-Zusammenarbeit/LD-AB32.5_IfSG_Meldewesen/Erreger/Salmonellen/Salmonellen_IMS/Fragebogen/Content_Export_FragebogenSalmonellen_SAL_data.xlsx"
+file <- "Z:/DFS-LUA-LD-Zusammenarbeit/LD-AB32.5_IfSG_Meldewesen/Erreger/Salmonellen/Salmonellen_IMS/Fragebogen/Content_Export_FragebogenSalmonellen.xlsx"
 
 raw <- read_excel(file, sheet = "Content", col_names = FALSE, skip = 3)
 
@@ -50,11 +50,11 @@ data <- data %>%
   ) %>%
   filter(Aktenzeichen != "AKTENZEICHEN")
 
-#Validierung des GA-Kürzels mittels der Datei GA_kuerzel
-valid_prefix <- GA_kuerzel$Kürzel %>%
+#Validierung des GA-Kürzels mittels der Datei geo_standards
+valid_prefix <- geo_standards$Kürzel %>%
   str_to_upper()
 
-GA_info <- GA_kuerzel %>%
+GA_info <- geo_standards %>%
   mutate(
     Eigentuemer = str_extract(Gesundheitsamt, "(?<=\\()[^()]+(?=\\))")
   ) %>%
@@ -93,8 +93,8 @@ result <- result %>%
   mutate(GA = coalesce(prefix, Kürzel))
 
 #Name des Gesundheitsamts hinzufügen
-GA_name <- GA_kuerzel %>% distinct(Gesundheitsamt, .keep_all = TRUE) %>%
-  mutate(GA=Kürzel) %>% select(GA,Gesundheitsamt)
+GA_name <- as.data.frame(geo_standards) %>% distinct(Gesundheitsamt, .keep_all = TRUE) %>%
+  mutate(GA = Kürzel) %>% select(GA, Gesundheitsamt)
 result <- left_join(result, GA_name, by = "GA")  %>%
   filter(!is.na(GA)) %>%
   select(-aktenzeichen,-az_upper,-prefix,-suffix,-Kürzel,-GA)
@@ -105,7 +105,7 @@ result <- left_join(result, GA_name, by = "GA")  %>%
 
 #Pfade definieren
 
-base_dir <- "Z:/DFS-LUA-LD-Zusammenarbeit/LD-AB32.5_IfSG_Meldewesen/IMS/Fragebogeninhalte_fuer_GÄ"
+base_dir <- "Z:/DFS-LUA-LD-Zusammenarbeit/LD-AB32.5_IfSG_Meldewesen/Erreger/Salmonellen/Salmonellen_IMS/Fragebogen/Fragebogeninhalte_fuer_GÄ"
 template_file <- file.path(base_dir, "Template_SAL.xlsx")
 target_dir <- file.path(base_dir, "FragebogenSAL")
 date_str <- format(Sys.Date(), "%Y-%m-%d")
