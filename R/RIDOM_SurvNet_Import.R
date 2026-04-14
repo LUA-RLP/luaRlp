@@ -64,7 +64,7 @@
 #'
 #' @export
 #'
-#' @importFrom readr write_csv
+#' @importFrom readr write_csv2
 #' @importFrom magrittr %>%
 #' @importFrom utils read.delim
 #' @importFrom writexl write_xlsx
@@ -100,7 +100,7 @@ create_Epidata <- function(
     if(type_of_problem %in%(c("non-matching-LIMS"))){
       p <- IDs %>%
         filter(!Survnet %in% SN$Aktenzeichen)
-      write_csv(p, problems)
+      write_csv2(p, problems)
     }else{
       stop("Choose a type of problem to report when requesting problems output")
     }

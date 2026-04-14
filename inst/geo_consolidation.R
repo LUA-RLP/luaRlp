@@ -6,7 +6,7 @@ data("RLP_geo")
 
 names(RLP_geo)
 
-## enlich mal korrigieren
+## endlich mal korrigieren
 names(RLP_geo) <- c("Land", "Kreise", "Gemeinden1", "Gemeinden2")
 
 save(RLP_geo, file="RLP_geo.rda")

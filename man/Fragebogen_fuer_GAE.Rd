@@ -9,7 +9,7 @@ Fragebogen_fuer_GAE()
 \description{
 Diese Funktion wird immer ausgeführt, wenn neue Fragebogendaten für die GÄ zur Verfügung //
 gestellt werden sollen. Davor muss das File aus EUSurvey im u.g. Ordner abgelegt werden. Die Ergebnisse finden //
-sich dann hier: "Z:\DFS-LUA-LD-Zusammenarbeit\LD-AB32.5_IfSG_Meldewesen\IMS\Fragebogeninhalte_fuer_GÄ\FragebogenSAL"
+sich dann hier: "Z:/DFS-LUA-LD-Zusammenarbeit/LD-AB32.5_IfSG_Meldewesen/Erreger/Salmonellen/Salmonellen_IMS/Fragebogen/Fragebogeninhalte_fuer_GÄ/FragebogenSAL"
 }
 \examples{
 Fragebogen_fuer_GAE()

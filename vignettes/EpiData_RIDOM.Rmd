@@ -65,7 +65,7 @@ Zur korrekten Konfiguration der Datenquelle kontaktieren Sie bei Problemen bitte
 Epidata4Import <- create_Epidata()
 ```
 
-Dafür wird ein Export aus unserem LIMS benötigt, dieser wird automatisch erstellt und unter `O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS_Export_auto/LIMS_Export.csv` abgelegt. Die Funktion liest diesen Export (als default) ein, lass sich aber auch (mit dem Argument `LIMS_link_file`) anders konfigurieren.
+Dafür wird ein Export aus unserem LIMS benötigt, dieser wird automatisch erstellt und unter `O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS_Export_auto/LIMS_Export.csv` abgelegt. Die Funktion liest diesen Export (als default) ein, lässt sich aber auch (mit dem Argument `LIMS_link_file`) anders konfigurieren.
 
 Dadurch wird eine Dateien zm Import in RIDOM ("Import Metadata") generiert. Diese Datei eignet sich zur automatischen Zuweisung des "Projekts" und zum automatischen Erkennen von Spalten für RIDOM Datenbank-Felder.
 
@@ -78,7 +78,13 @@ Epidata4Import <- create_Epidata(
 
 Wenn hier Probleme durch manuelle Einträge gelöst werden, ist darauf zu achten, dass die editierte Datei nicht durch erneutes Ausführen des Codes überschrieben wird!
 
-Eine `Problems.csv` Datei mit solchen "gelösten Problemen", also angepassten SurvNet Aktenzeichen lässt sich wiederum als neue Import-Datei verwenden.
+Eine `Problems.csv` Datei mit solchen "gelösten Problemen", also angepassten SurvNet Aktenzeichen lässt sich wiederum als neue Import-Datei (`LIMS_link_file`) verwenden.
+
+```{r problems2}
+solvedProblems <- create_Epidata(
+  LIMS_link_file = "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Export Merger/Problems.csv")
+```
+`solvedProblems` ist hier leer, da keine manuelle Korrektur in `Problems.csv` vorgenommen wurde. 
 
 ## Trouble shooting (Proben ohne Epidaten)
 
