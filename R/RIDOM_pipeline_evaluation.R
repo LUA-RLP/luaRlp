@@ -31,9 +31,9 @@
 #' @examples
 #'Re_Eval <- RIDOM_comptable_re_evaluate(
 #'old_folder =
-#'"O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_19/",
+#'"O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/3 Validierung Pipeline/2025_03_19/",
 #'new_folder =
-#'  "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_20/")
+#'  "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/3 Validierung Pipeline/2025_03_20/")
 #'
 RIDOM_comptable_re_evaluate <-
   function (old_folder, new_folder,

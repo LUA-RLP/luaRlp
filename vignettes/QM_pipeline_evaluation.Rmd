@@ -46,9 +46,9 @@ Wir werden im weiteren Verlauf die folgende Funktion nutzen:
 ```{r message=FALSE, warning=FALSE}
 Re_Eval <- RIDOM_comptable_re_evaluate(
   old_folder = 
-    "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_19/",
+    "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/3 Validierung Pipeline/2025_03_19/",
   new_folder = 
-    "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/Validierung Pipeline/2025_03_20/")
+    "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/13_QM/3 Validierung Pipeline/2025_03_20/")
 ```
 
 1.  `old_folder` bezeichnet einen Ordner in dem Tabellen als **.csv-Dateien** aus der vorherigen Evaluierung abgelegt sind. Der Ordner wurde mit dem Datum im Format (JJJJ_MM_DD) benannt. Wir notieren den Pfad dieses Ordners. Die Funktion des Pakets wird sicherstellen, dass er die geforderten Dateien ("Comparison tables") enthält.
