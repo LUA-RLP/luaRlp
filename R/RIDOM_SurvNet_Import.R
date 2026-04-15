@@ -84,7 +84,7 @@ create_Epidata <- function(
   SN <- merge(SN, geo_standards, by = "LK_ID") %>%
     .combine_exposure() %>%
     .append_LK_LatLong() %>%
-    mutate(Aktenzeichen = gsub(" ", "", paste0(.data$Kürzel,
+    mutate(Aktenzeichen = gsub(" ", "", paste0(.data$Kürzel, " - ",
                                                .data$Aktenzeichen))) %>%
     .cleanup_RIDOM()
   IDs <- read.delim(LIMS_link_file, sep = ";")
