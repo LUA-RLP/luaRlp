@@ -8,6 +8,8 @@
 #' @import readxl
 #' @import openxlsx
 #'
+#' @export
+#'
 #' @examples Fragebogen_fuer_GAE()
 
 Fragebogen_fuer_GAE <- function() {
