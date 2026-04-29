@@ -14,7 +14,7 @@
 
 Fragebogen_fuer_GAE <- function() {
 
-file <- "Z:/DFS-LUA-LD-Zusammenarbeit/LD-AB32.5_IfSG_Meldewesen/Erreger/Salmonellen/Salmonellen_IMS/Fragebogen/Content_Export_FragebogenSalmonellen.xlsx"
+file <- "Z:/DFS-LUA-LD-Zusammenarbeit/LD-AB32.5_IfSG_Meldewesen/Erreger/Salmonellen/Salmonellen_IMS/Fragebogen/Fragebogeninhalte_fuer_GÄ/Content_Export_FragebogenSalmonellen.xlsx"
 
 raw <- read_excel(file, sheet = "Content", col_names = FALSE, skip = 3)
 
@@ -89,8 +89,19 @@ Abgleich <- Abgleich %>%
   ) %>%
   select(Aktenzeichen, Kürzel)
 
-#Merge mit Fragebogendaten
-result <- left_join(data, Abgleich, by = "Aktenzeichen")
+#Merge mit Fragebogendaten, dabei sicherstellen, dass nur Aktenzeichen verbunden werden, die unique sind.
+
+data_clean <- data %>%
+  group_by(Aktenzeichen) %>%
+  filter(n() == 1) %>%
+  ungroup()
+
+Abgleich_clean <- Abgleich %>%
+  group_by(Aktenzeichen) %>%
+  filter(n() <= 1) %>%
+  ungroup()
+
+result <- left_join(data_clean, Abgleich_clean, by = "Aktenzeichen")
 result <- result %>%
   mutate(GA = coalesce(prefix, Kürzel))
 
