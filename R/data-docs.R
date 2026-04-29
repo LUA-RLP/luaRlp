@@ -72,6 +72,8 @@
 #' @docType data
 #' @usage data(geo_standards)
 #'
+#' @import sf
+#'
 #' @format Eine Tabelle mit 4 Spalten, in denen Informationen zu :
 #' \describe{
 #'   \item{Meldelandkreis}{LUA RLP interne Standard-Schreibweise der Landkreise}
