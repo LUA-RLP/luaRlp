@@ -12,7 +12,8 @@ Eine Tabelle mit 4 Spalten, in denen Informationen zu :
   \item{LD_ID}{Landkreis Identifyer, kompatibel mit SurvNet}
   \item{Gesundheitsamt}{Für den Landkreis zuständiges Gesundheitsamt}
   \item{Kürzel}{LUA RLP interes Standard-Kürzel für das Gesundheitsamt}
-  \item{geom}{Polygone der Landkreis-Geometrie aus gadm}
+  \item{umriss}{Polygone (sf MULTIPOLYGON) der Landkreis-Geometrie aus gadm}
+  \item{centroid}{Centroid (sf POINT) der Landkreise (für zentrale pseudo-Orte pro LK)}
   }
 }
 \source{
@@ -24,6 +25,10 @@ data(geo_standards)
 \description{
 Enthält eine Tabelle zur standardisierten Benennung und Verarbeitung von
 Gebietsdaten mit Bezug zum öffentlichen Gesundheitsdienst in Rheinland-Pfalz
+}
+\details{
+Die Spalten `umriss` und `centroid` sind sf-Objekte. Für die Nutzung der
+Geometriefunktionen muss das Paket \pkg{sf} geladen sein.
 }
 \examples{
 data(geo_standards)
