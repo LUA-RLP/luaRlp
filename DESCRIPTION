@@ -31,7 +31,9 @@ Imports: odbc,
     shinycssloaders,
     kableExtra,
     writexl,
-    openssl
+    openssl,
+    readxl,
+    openxlsx
 Suggests: rmarkdown,
     knitr
 VignetteBuilder: knitr
