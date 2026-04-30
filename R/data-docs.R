@@ -1,27 +1,3 @@
-#' Landkreise in Rheinland-Pfalz: Centroids of Latitude and Longitude
-#'
-#' Centroids (thier latitude and longitude) of the Landkreise in Rheinland-Pfalz
-#' We might remove this dataset at some point and include code to generate the
-#' centroids from geographic shapes. We should do so when we use the shapes for
-#' other purposes.
-#'
-#' @docType data
-#' @usage data(LKLatLong)
-#'
-#' @format A tibble with 36 rows and 2 variables:
-#' \describe{
-#'   \item{Meldekreis}{Name of the Landkreis (starting LK for Landkreis)}
-#'   \item{Lat/Long of Isolation}{The latitude and Longitude of the Landkreis'
-#'   centroid separated by a comma}
-#'   }
-#' @source Compiled by Thomas Stelzer and Anja Schoeps
-#' @examples
-#' data(LKLatLong)
-#' head(LKLatLong)
-"LKLatLong"
-
-
-
 
 #' Landkreise und Gemeinden in Rheinland-Pfalz
 #'
@@ -72,8 +48,6 @@
 #' @docType data
 #' @usage data(geo_standards)
 #'
-#' @import sf
-#'
 #' @format Eine Tabelle mit 4 Spalten, in denen Informationen zu :
 #' \describe{
 #'   \item{Meldelandkreis}{LUA RLP interne Standard-Schreibweise der Landkreise}
@@ -81,8 +55,14 @@
 #'   \item{LD_ID}{Landkreis Identifyer, kompatibel mit SurvNet}
 #'   \item{Gesundheitsamt}{Für den Landkreis zuständiges Gesundheitsamt}
 #'   \item{Kürzel}{LUA RLP interes Standard-Kürzel für das Gesundheitsamt}
-#'   \item{geom}{Polygone der Landkreis-Geometrie aus gadm}
+#'   \item{umriss}{Polygone (sf MULTIPOLYGON) der Landkreis-Geometrie aus gadm}
+#'   \item{centroid}{Centroid (sf POINT) der Landkreise (für zentrale pseudo-Orte pro LK)}
 #'   }
+#'
+#' @details
+#' Die Spalten `umriss` und `centroid` sind sf-Objekte. Für die Nutzung der
+#' Geometriefunktionen muss das Paket \pkg{sf} geladen sein.
+#'
 #' @source Compiled by Anja Schoeps with additions by Emanuel Heitlinger
 #' @examples
 #' data(geo_standards)

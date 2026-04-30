@@ -29,7 +29,7 @@ The xlsx file written to "out" has the following columns:
   whether AusbruchInfo_InterneRef is filled}
   \item{Country of Isolation}{Character. Hard-coded "Germany".}
   \item{Lat/Long of Isolation}{Character. The latitude and longitude of the
-  centroid of the Landkreis derived from data("LKLatLong") merged via
+  centroid of the Landkreis derived from data("geo_standards") merged via
   "Meldelandkreis" (merge key)}
   \item{Project}{Character. The RIDOM project name recoded from
   Meldekategorie (Erreger) from SurvNet}
