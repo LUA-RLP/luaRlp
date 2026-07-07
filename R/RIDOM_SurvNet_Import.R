@@ -32,7 +32,7 @@
 #'   \item{IdRecord}{Character. Unchanged from SurvNet}
 #'   \item{Collection Date}{Date. As Meldedatum from SurvNet}
 #'   \item{Gesundheitsamt}{Character. Via merge based on
-#'   Eigentuemer from SurvNet (merge key) obtaining the Gesundheitsamt
+#'   LK_ID from SurvNet (merge key) obtaining the Gesundheitsamt
 #'   variable from data("geo_standards")}
 #'   \item{Meldelandkreis}{Character. Unchanged from SurvNet}
 #'   \item{MunicipalityKey}{Character. Unchanged from SurvNet}
@@ -263,7 +263,8 @@ geo2ridom <- function(x){
       .data$HospStatus, .data$VerstorbenStatus, .data$Expositionsort,
       .data$Outbreak, .data$`Country of Isolation`,
       .data$`Lat/Long of Isolation`, .data$Project, .data$Host,
-      .data$`Source type`, .data$`Source subtype`, .data$`Specimen type`
+      .data$`Source type`, .data$`Source subtype`, .data$`Specimen type`,
+      .data$`Eigentuemer_ID`
     )
 }
 
