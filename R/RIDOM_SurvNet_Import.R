@@ -33,7 +33,7 @@
 #'   \item{Collection Date}{Date. As Meldedatum from SurvNet}
 #'   \item{Gesundheitsamt}{Character. Via merge based on
 #'   Eigentuemer from SurvNet (merge key) obtaining the Gesundheitsamt
-#'   variable from data("Eigentuemer")}
+#'   variable from data("geo_standards")}
 #'   \item{Meldelandkreis}{Character. Unchanged from SurvNet}
 #'   \item{MunicipalityKey}{Character. Unchanged from SurvNet}
 #'   \item{Host Age (years)}{Numeric. As AgeComputed from SurvNet}
