@@ -154,7 +154,7 @@ build_query <- function(Thema=NULL, Periode=c("alle","last2weeks","thisyear","la
 #' @export
 #'
 #' @examples
-#' SurvNet_data <- import_SurvNet(build_query(Thema="Tageskontrolle")
+#' SurvNet_data <- import_SurvNet(build_query(Thema="Tageskontrolle"))
 #'
 import_SurvNet <- function(query,  dsn = get_survnet_dsn()){
   if (is.null(dsn)) {
