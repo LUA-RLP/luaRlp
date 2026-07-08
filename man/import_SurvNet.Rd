@@ -26,7 +26,7 @@ Das Hauptargument für diese Funktion "query" entsteht durch die Funktion build_
 import_SurvNet
 }
 \examples{
-SurvNet_data <- import_SurvNet(build_query(Thema="Tageskontrolle")
+SurvNet_data <- import_SurvNet(build_query(Thema="Tageskontrolle"))
 
 }
 \seealso{

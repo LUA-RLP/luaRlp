@@ -4,7 +4,11 @@
 \alias{Fragebogen_fuer_GAE}
 \title{Fragebogen_fuer_GAE}
 \usage{
-Fragebogen_fuer_GAE()
+Fragebogen_fuer_GAE(
+  base_dir =
+    "Z:/DFS-LUA-LD-Zusammenarbeit/LD-AB32.5_IfSG_Meldewesen/Erreger/Salmonellen/Salmonellen_IMS/Fragebogen/Fragebogeninhalte_fuer_GÄ",
+  filename = "Content_Export_FragebogenSalmonellen.xlsx"
+)
 }
 \description{
 Diese Funktion wird immer ausgeführt, wenn neue Fragebogendaten für die GÄ zur Verfügung //

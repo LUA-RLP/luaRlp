@@ -13,8 +13,8 @@ The xlsx file written to "out" has the following columns:
   \item{IdRecord}{Character. Unchanged from SurvNet}
   \item{Collection Date}{Date. As Meldedatum from SurvNet}
   \item{Gesundheitsamt}{Character. Via merge based on
-  Eigentuemer from SurvNet (merge key) obtaining the Gesundheitsamt
-  variable from data("Eigentuemer")}
+  LK_ID from SurvNet (merge key) obtaining the Gesundheitsamt
+  variable from data("geo_standards")}
   \item{Meldelandkreis}{Character. Unchanged from SurvNet}
   \item{MunicipalityKey}{Character. Unchanged from SurvNet}
   \item{Host Age (years)}{Numeric. As AgeComputed from SurvNet}

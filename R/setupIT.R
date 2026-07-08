@@ -134,7 +134,7 @@ autodetect_survnet_dsn <- function(pattern = "surv.*net") {
 #' Fehlermeldugnen während der Paketinstallation zu prüfen, ob die Proxy-
 #' Einstellungen in R korrekt sind und eine Netzwerkverbindung zulassen
 #'
-#' @param timeout
+#' @param timeout Latenzzeit
 #'
 #' @return logical indicating whether you're online
 #'

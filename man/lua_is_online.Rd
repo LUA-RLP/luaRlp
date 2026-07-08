@@ -7,7 +7,7 @@
 lua_is_online(timeout = 15, url = "http://www.google.com")
 }
 \arguments{
-\item{timeout}{}
+\item{timeout}{Latenzzeit}
 }
 \value{
 logical indicating whether you're online

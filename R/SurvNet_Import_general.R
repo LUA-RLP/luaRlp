@@ -26,7 +26,7 @@ build_query <- function(Thema=NULL, Periode=c("alle","last2weeks","thisyear","la
       [Data].[Disease71].[ReportingCounty] AS 'LK_ID',
       [Data].[Version].[IdType],
       [Data].[Disease71].[ReferenceDefComputed] AS 'Referenzdefinition',
-      [Data].[Version].[CodeRecordOwner] AS 'Eigentuemer',
+      [Data].[Version].[CodeRecordOwner] AS 'Eigentuemer_ID',
       [Data].[Version].[IdRecord] AS 'IdRecord',
       [Data].[Disease71].[Sex] AS 'Geschlecht',
       [Data].[Disease71].[ReportingDate] AS 'Meldedatum',
@@ -192,121 +192,5 @@ import_SurvNet <- function(query,  dsn = get_survnet_dsn()){
 
 
 
-
-
-
-
-#'  Add values
-#'
-#' @return A data frame with columns, where value labels have been added for specific variables
-#'
-#' @export
-#'
-#' @import dplyr
-#'
-#' @examples
-#' add_values(import_SurvNet(build_query()))
-#'
-#'
-add_values <- function(df) {
-
-  # Standard-Mutates, die immer existieren
-  df <- df %>%
-    mutate(
-      Meldedatum = as.Date(.data$Meldedatum),
-      Erkrankungsbeginn = as.Date(.data$Erkrankungsbeginn),
-      HospitalisierungStatus = recode(as.character(.data$HospitalisierungStatus),
-                                      "10" = "nein", "20" = "ja", "-1" = "-nicht ermittelbar-",
-                                      "0" = "-nicht erhoben-"),
-      VerstorbenStatus = recode(as.character(.data$VerstorbenStatus),
-                                "10" = "nein", "20" = "ja", "-1" = "-nicht ermittelbar-",
-                                "0" = "-nicht erhoben-"),
-      Geschlecht = recode(as.character(.data$Geschlecht),
-                          "1" = "männlich", "2" = "weiblich", "3" = "nicht-binär",
-                          "-1" = "-nicht ermittelbar-", "0" = "-nicht erhoben-"),
-      Referenzdefinition = recode(as.character(.data$Referenzdefinition),
-                                  "1" = "Ja", "0" = "nein")
-    ) %>%
-    rename(Meldejahr = WeekYear, Meldewoche = Week, AlterBerechnet = AgeComputed)
-
-  # Optionale Spalten nur hinzufügen, wenn sie existieren
-  if ("GültigAb_DMYhs" %in% names(df)) {
-    df$GültigAb <- as.Date(df$GültigAb_DMYhs)
-  }
-  if ("AtGACreated" %in% names(df)) {
-    df$AtGA <- as.Date(df$AtGACreated)
-  }
-  if ("AtLSCreated" %in% names(df)) {
-    df$AtLS <- as.Date(df$AtLSCreated)
-  }
-  if ("Falldefkategorie" %in% names(df)) {
-    df$Falldefkategorie <- recode(
-      trimws(as.character(df$Falldefkategorie)),
-      "-1" = "-nicht ermittelbar",
-      "1" = "klinisch",
-      "2" = "klinisch-epidemiologisch",
-      "3" = "klinisch-labordiagnostisch",
-      "4" = "laborsdiagnostisch bei nicht erfüllter Klinik",
-      "5" = "labordiagnostisch bei unbekannter Klinik",
-      "11" = "spezifisch klinisch",
-      "31" = "klinisch-labordiagnostisch (C1)"
-    )
-  }
-  if ("P112Relevant_" %in% names(df)) {
-    df$P112Relevant_ <- recode(trimws(as.character(df$P112Relevant_)), "1" = "Ja", "0" = "nein")
-  }
-  if ("StatusPlaceOfInf_" %in% names(df)) {
-    df$StatusPlaceOfInf_ <- recode(
-     as.character(df$StatusPlaceOfInf_),
-      "10" = "nein", "20" = "ja", "-1" = "-nicht ermittelbar-",
-      "0" = "-nicht erhoben-")
-  }
-  if ("StatusPatientSetting_" %in% names(df)) {
-    df$StatusPatientSetting_ <- recode(
-      trimws(as.character(df$StatusPatientSetting_)),
-      "-1" = "-nicht ermittelbar",
-      "0" = "-nicht erhoben-",
-      "10" = "ohne",
-      "19" = "Betreut/untergebracht in Einrichtung gemäß §23",
-      "20" = "Tätigkeit in Einrichtungen gemäß §23",
-      "21" = "Betreut in Gemeinschaftseinrichtung nach §33",
-      "22" = "Tätigkeit in Einrichtungen gemäß §33",
-      "23" = "Betreut in Einrichtung nach §36",
-      "24" = "Tätigkeit in Einrichtung nach §36",
-      "25" = "Tätigkeit mit Lebensmitteln nach §42"
-    )
-  }
-
-  # Merge immer
-  df <- merge(df, geo_standards, all.x=TRUE, by = "LK_ID")
-  df <- merge(df, IdType_Datensatzkategorie, all.x=TRUE, by = "IdType")
-
-  # Merge nur, wenn Region_ID existiert
-  if ("Region_ID" %in% names(df)) {
-    df <- merge(df, Regionen, all.x=TRUE, by = "Region_ID")
-    df$Region_ID <- NULL
-    # Erkennen, welche IdRecords mehrfach vorkommen
-    dups <- duplicated(df$IdRecord) | duplicated(df$IdRecord, fromLast = TRUE)
-    # Für diese IDs den Wert ersetzen
-    df$Angabe_zum_Expositionsort[df$IdRecord %in% df$IdRecord[dups]] <- "mehrere Expositionsorte"
-    # Danach nur erste Zeile pro ID behalten
-    df <- df[!duplicated(df$IdRecord), ]
-  }
-
-  # Merge nur, wenn Pathogen_ID existiert
-  if ("Pathogen_ID" %in% names(df)) {
-    df <- merge(df, pathogen_dictionary, all.x=TRUE, by = "Pathogen_ID")
-    df$Pathogen_ID <- NULL
-  }
-
-
-  #Unnötige oder doppelte Spalten entfernen
-  spalten_entfernen <- c("Eigentuemer", "AtGACreated", "AtLSCreated", "GültigAb_DMYhs", "IdType", "LK_ID", "Kürzel", "PlaceOfInf_")
-  df <- df[, !(names(df) %in% spalten_entfernen)]
-
-  return(df)
-
-
-}
 
 
