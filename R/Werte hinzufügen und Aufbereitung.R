@@ -163,26 +163,20 @@ add_values <- function(df) {
 
   # Merge immer
   #Info Landkreis
-  df <- df %>%
-    left_join(
-      select(geo_standards,
-             LK_ID, Meldelandkreis, umriss, centroid, GID_2,
-             Wohnort_GA = Gesundheitsamt),
-      by = "LK_ID"
-    )
+  df <- merge_info(df,geo_standards,"LK_ID", Meldelandkreis, umriss, centroid, GID_2, Wohnort_GA = Gesundheitsamt)
   #Info Eigentümer
-  df <- df %>%
-    left_join(
-      select(geo_standards,
-             Eigentuemer_GA=Gesundheitsamt, Kürzel),
-      by = "Eigentuemer_ID"
-    )
+  df <- merge_info(df,geo_standards,"Eigentuemer_ID", Kürzel, Eigentümer_GA = Gesundheitsamt,first=TRUE)
+
+    #Vergleich Wohnort_GA und Eigentümer_GA
+  df <- df %>% mutate(GA_Differenz = if_else(Wohnort_GA == Eigentümer_GA,
+                          "Wohnort in Eigentümer_LK", "Achtung: Wohnort außerhalb Eigentümer_LK"))
+
   #Info Datensatzkategorien
-  df <- merge(df, IdType_Datensatzkategorie, all.x=TRUE, by = "IdType")
+  df <- merge_info(df,IdType_Datensatzkategorie,"IdType", Datensatzkategorie)
 
   # Merge nur, wenn Region_ID existiert
   if ("Region_ID" %in% names(df)) {
-    df <- merge(df, Regionen, all.x=TRUE, by = "Region_ID")
+    df <- merge_info(df,Regionen,"Region_ID", Angabe_zum_Expositionsort)
     df$Region_ID <- NULL
     # Erkennen, welche IdRecords mehrfach vorkommen
     dups <- duplicated(df$IdRecord) | duplicated(df$IdRecord, fromLast = TRUE)
@@ -194,7 +188,7 @@ add_values <- function(df) {
 
   # Merge nur, wenn Pathogen_ID existiert
   if ("Pathogen_ID" %in% names(df)) {
-    df <- merge(df, pathogen_dictionary, all.x=TRUE, by = "Pathogen_ID")
+    df <- merge_info(df,pathogen_dictionary,"Pathogen_ID", Erreger)
     df$Pathogen_ID <- NULL
   }
 
