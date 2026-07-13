@@ -164,9 +164,11 @@ add_values <- function(df) {
 
   # Merge immer
   #Info Landkreis
-  df <- merge_info(df,geo_standards,"LK_ID", Meldelandkreis, umriss, centroid, GID_2, Wohnort_GA = Gesundheitsamt)
+  df <- merge_info(df, geo_standards,"LK_ID", LK_ID, umriss, centroid, GID_2,
+                   Meldelandkreis, Wohnort_GA = Gesundheitsamt)
   #Info Eigentümer
-  df <- merge_info(df,geo_standards,"Eigentuemer_ID", Kürzel, Eigentümer_GA = Gesundheitsamt,first=TRUE)
+  df <- merge_info(df,geo_standards,"Eigentuemer_ID", Kürzel,
+                   Eigentümer_GA = Gesundheitsamt, first=TRUE)
 
     #Vergleich Wohnort_GA und Eigentümer_GA
   df <- df %>% mutate(GA_Differenz = if_else(Wohnort_GA == Eigentümer_GA,
@@ -194,9 +196,9 @@ add_values <- function(df) {
   }
 
 
-  #Unnötige oder doppelte Spalten entfernen
-  spalten_entfernen <- c("Eigentuemer", "AtGACreated", "AtLSCreated", "GültigAb_DMYhs", "IdType", "LK_ID", "Kürzel", "PlaceOfInf_")
-  df <- df[, !(names(df) %in% spalten_entfernen)]
+  ## ## Unnötige oder doppelte Spalten entfernen sind m.E. nicht unnötig
+  ##  spalten_entfernen <- c("Eigentuemer", "AtGACreated", "AtLSCreated", "GültigAb_DMYhs", "IdType", "LK_ID", "Kürzel", "PlaceOfInf_")
+  ## df <- df[, !(names(df) %in% spalten_entfernen)]
 
   return(df)
 

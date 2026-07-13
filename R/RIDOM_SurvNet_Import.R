@@ -82,14 +82,10 @@ create_Epidata <- function(
     problems = NULL,
     type_of_problem = "non-matching-LIMS", ...
 ){
-  SN <- SurvNet
-  SN <- merge_info(SN, geo_standards, by = "Eigentuemer_ID", "Kürzel",
-                   "Gesundheitsamt", first = TRUE) %>%
-    merge_info(., geo_standards, "centroid", "Meldelandkreis", by = "LK_ID") %>%
+  SN <- add_values(SurvNet) %>%
     .combine_exposure() %>%
     mutate(Aktenzeichen = gsub(" ", "", paste0(.data$Kürzel, " - ",
-                                               .data$Aktenzeichen)),
-           `Lat/Long of Isolation` = geo2ridom(.data$centroid))%>%
+                                               .data$Aktenzeichen)))%>%
     .cleanup_RIDOM()
   IDs <- read.delim(LIMS_link_file, sep = ";")
   Out_EpiDaten <- inner_join(IDs, SN,
@@ -174,7 +170,6 @@ geo2ridom <- function(x){
 .cleanup_RIDOM <- function(data){
 # Final dataset with cleaned and formatted variables
   data %>%
-    add_values() %>%
     mutate(
       `Project` = recode(.data$Datensatzkategorie,
                          "EHEC" = "Produktiv_EHEC",
@@ -182,7 +177,8 @@ geo2ridom <- function(x){
                          "Listeriose" = "Produktiv_Listeria_monocytogenes",
                          "Salmonellose" = "Produktiv_Salmonella_enterica",
                          "MRSA" = "Produktiv_MRSA"),
-      `Country of Isolation` = "Germany"
+      `Country of Isolation` = "Germany",
+      `Lat/Long of Isolation` = geo2ridom(.data$centroid)
     ) %>%
     mutate(## everywhere but Legionella human host as default
       `Host` = ifelse(Datensatzkategorie != "Legionellose", "Homo sapiens",
@@ -200,7 +196,8 @@ geo2ridom <- function(x){
            `Host Age (years)` = .data$AlterBerechnet,
            `Host Sex` = .data$Geschlecht,
            `HospStatus` = .data$HospitalisierungStatus,
-           `Outbreak` = .data$Ausbruch) %>%
+           `Outbreak` = .data$Ausbruch,
+           `Gesundheitsamt` = .data$Wohnort_GA) %>%
     select(
       .data$Aktenzeichen,
       .data$IdRecord,
