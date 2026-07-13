@@ -27,18 +27,20 @@
 #' \describe{
 #'   \item{Sample ID}{Character. As "Laborprobennummer" from LIMS}
 #'   \item{Alias ID (s)}{Character. This is the \strong{merge key}! As
-#'   "Survnet" from SurvNet and as "Aktenzeichen" from LIMS.}
+#'   "Survnet" from SurvNet and as "Aktenzeichen" from LIMS. Prefixed with
+#'   Kürzel from geo_standards (merged via Eigetuemer_ID).}
 #'   \item{Zip of Isolation}{Character. As Postleitzahl from LIMS}
 #'   \item{IdRecord}{Character. Unchanged from SurvNet}
 #'   \item{Collection Date}{Date. As Meldedatum from SurvNet}
 #'   \item{Gesundheitsamt}{Character. Via merge based on
-#'   LK_ID from SurvNet (merge key) obtaining the Gesundheitsamt
-#'   variable from data("geo_standards")}
-#'   \item{Meldelandkreis}{Character. Unchanged from SurvNet}
+#'   Eigentuemer_ID from SurvNet (merge key) obtaining the Gesundheitsamt
+#'   variable from data("geo_standards").}
+#'   \item{Meldelandkreis}{Character. Based on LK_ID from SurvNet, clear names
+#'   via merge with data("geo_standards").}
 #'   \item{MunicipalityKey}{Character. Unchanged from SurvNet}
 #'   \item{Host Age (years)}{Numeric. As AgeComputed from SurvNet}
 #'   \item{Host Sex}{Character. Recoded from Geschlecht from SurvNet}
-#'   \item{HospStatus}{Character. Recoded from HospitalisierungStatus from
+#'   \item{HospStatus}{Character.Recoded from HospitalisierungStatus from
 #'   SurvNet}
 #'   \item{VerstorbenStatus}{Character. Recoded from VerstorbenStatus from
 #'   SurvNet}
@@ -81,8 +83,9 @@ create_Epidata <- function(
     type_of_problem = "non-matching-LIMS", ...
 ){
   SN <- SurvNet
-  SN <- merge_info(SN, geo_standards, by = "Eigentuemer_ID", first = TRUE) %>%
-    merge_info(., geo_standards, "Kürzel", "centroid", "Gesundheitsamt", "Meldelandkreis", by = "LK_ID") %>%
+  SN <- merge_info(SN, geo_standards, by = "Eigentuemer_ID", "Eigentuemer_ID",
+                   "Gesundheitsamt", first = TRUE) %>%
+    merge_info(., geo_standards, "Kürzel", "centroid", "Meldelandkreis", by = "LK_ID") %>%
     .combine_exposure() %>%
     mutate(Aktenzeichen = gsub(" ", "", paste0(.data$Kürzel, " - ",
                                                .data$Aktenzeichen)),
