@@ -99,6 +99,7 @@ add_values <- function(df) {
     mutate(
       Meldedatum = as.Date(.data$Meldedatum),
       Erkrankungsbeginn = as.Date(.data$Erkrankungsbeginn),
+      Ausbruch = ifelse(!is.na(.data$AusbruchInfo_InterneRef), 1, 0),
       HospitalisierungStatus = recode(as.character(.data$HospitalisierungStatus),
                                       "10" = "nein", "20" = "ja", "-1" = "-nicht ermittelbar-",
                                       "0" = "-nicht erhoben-"),

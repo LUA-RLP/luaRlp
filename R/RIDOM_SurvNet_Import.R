@@ -83,9 +83,9 @@ create_Epidata <- function(
     type_of_problem = "non-matching-LIMS", ...
 ){
   SN <- SurvNet
-  SN <- merge_info(SN, geo_standards, by = "Eigentuemer_ID", "Eigentuemer_ID",
+  SN <- merge_info(SN, geo_standards, by = "Eigentuemer_ID", "Kürzel",
                    "Gesundheitsamt", first = TRUE) %>%
-    merge_info(., geo_standards, "Kürzel", "centroid", "Meldelandkreis", by = "LK_ID") %>%
+    merge_info(., geo_standards, "centroid", "Meldelandkreis", by = "LK_ID") %>%
     .combine_exposure() %>%
     mutate(Aktenzeichen = gsub(" ", "", paste0(.data$Kürzel, " - ",
                                                .data$Aktenzeichen)),
@@ -174,24 +174,8 @@ geo2ridom <- function(x){
 .cleanup_RIDOM <- function(data){
 # Final dataset with cleaned and formatted variables
   data %>%
+    add_values() %>%
     mutate(
-      Meldedatum = as.Date(.data$Meldedatum),
-      Outbreak = ifelse(!is.na(.data$AusbruchInfo_InterneRef), 1, 0),
-      HospStatus = recode(.data$HospitalisierungStatus,
-                          "10" = "no", "20" = "yes", "-1" = "unknown",
-                          "0" = "not assessed"),
-      VerstorbenStatus = recode(.data$VerstorbenStatus,
-                        "10" = "no", "20" = "yes", "-1" = "unknown",
-                        "0" = "not assessed"),
-      `Host Sex` = recode(.data$Geschlecht,
-                          "1" = "male", "2" = "female", "3" = "non-binary",
-                          "-1" = "unknown", "0" = "unknown"),
-      `Datensatzkategorie` = recode(.data$IdType,
-                                    "121" = "EHEC","135" = "EHEC",
-                                    "138" = "Legionellose",
-                                    "140" = "Listeriose",
-                                    "157" = "Salmonellose",
-                                    "179" = "MRSA"),
       `Project` = recode(.data$Datensatzkategorie,
                          "EHEC" = "Produktiv_EHEC",
                          "Legionellose" = "Produktiv_Legionella_pneumophila",
@@ -213,8 +197,10 @@ geo2ridom <- function(x){
                                "")
         ) %>%
     rename(`Collection Date` = .data$Meldedatum,
-           `Host Age (years)` = .data$AgeComputed
-    ) %>%
+           `Host Age (years)` = .data$AlterBerechnet,
+           `Host Sex` = .data$Geschlecht,
+           `HospStatus` = .data$HospitalisierungStatus,
+           `Outbreak` = .data$Ausbruch) %>%
     select(
       .data$Aktenzeichen,
       .data$IdRecord,
