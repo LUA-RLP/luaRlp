@@ -99,7 +99,6 @@ add_values <- function(df) {
     mutate(
       Meldedatum = as.Date(.data$Meldedatum),
       Erkrankungsbeginn = as.Date(.data$Erkrankungsbeginn),
-      Ausbruch = ifelse(!is.na(.data$AusbruchInfo_InterneRef), 1, 0),
       HospitalisierungStatus = recode(as.character(.data$HospitalisierungStatus),
                                       "10" = "nein", "20" = "ja", "-1" = "-nicht ermittelbar-",
                                       "0" = "-nicht erhoben-"),
@@ -162,9 +161,13 @@ add_values <- function(df) {
     )
   }
 
+  if ("AusbruchInfo_InterneRef" %in% names(df)) {
+    Ausbruch = ifelse(!is.na(df$AusbruchInfo_InterneRef), 1, 0)
+  }
+
   # Merge immer
   #Info Landkreis
-  df <- merge_info(df, geo_standards,"LK_ID", LK_ID, umriss, centroid, GID_2,
+  df <- merge_info(df, geo_standards,"LK_ID", umriss, centroid, GID_2,
                    Meldelandkreis, Wohnort_GA = Gesundheitsamt)
   #Info Eigentümer
   df <- merge_info(df,geo_standards,"Eigentuemer_ID", Kürzel,
