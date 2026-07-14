@@ -8,23 +8,25 @@ The xlsx file written to "out" has the following columns:
 \describe{
   \item{Sample ID}{Character. As "Laborprobennummer" from LIMS}
   \item{Alias ID (s)}{Character. This is the \strong{merge key}! As
-  "Survnet" from SurvNet and as "Aktenzeichen" from LIMS.}
+  "Survnet" from SurvNet and as "Aktenzeichen" from LIMS. Prefixed with
+  Kürzel from geo_standards (merged via Eigetuemer_ID).}
   \item{Zip of Isolation}{Character. As Postleitzahl from LIMS}
   \item{IdRecord}{Character. Unchanged from SurvNet}
   \item{Collection Date}{Date. As Meldedatum from SurvNet}
   \item{Gesundheitsamt}{Character. Via merge based on
-  LK_ID from SurvNet (merge key) obtaining the Gesundheitsamt
-  variable from data("geo_standards")}
-  \item{Meldelandkreis}{Character. Unchanged from SurvNet}
+  Eigentuemer_ID from SurvNet (merge key) obtaining the Gesundheitsamt
+  variable from data("geo_standards").}
+  \item{Meldelandkreis}{Character. Based on LK_ID from SurvNet, clear names
+  via merge with data("geo_standards").}
   \item{MunicipalityKey}{Character. Unchanged from SurvNet}
   \item{Host Age (years)}{Numeric. As AgeComputed from SurvNet}
   \item{Host Sex}{Character. Recoded from Geschlecht from SurvNet}
-  \item{HospStatus}{Character. Recoded from HospitalisierungStatus from
+  \item{HospStatus}{Character.Recoded from HospitalisierungStatus from
   SurvNet}
   \item{VerstorbenStatus}{Character. Recoded from VerstorbenStatus from
   SurvNet}
   \item{Expositionsort}{Character. Derived from multiple exposure variables
-  from SurvNet (see ?luaRlp:::.combine_exposure)}
+  from SurvNet (see ?luaRlp:::.combine_exposure) in add_values()}
   \item{Outbreak}{Logical. Recoded from SurvNet by determining
   whether AusbruchInfo_InterneRef is filled}
   \item{Country of Isolation}{Character. Hard-coded "Germany".}
