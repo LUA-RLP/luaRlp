@@ -6,9 +6,8 @@
 #' prefix), defaults to a path on our System on which automated LIMS exports are
 #' stored
 #'
-#' @param out The output file in xlsx format (defaults to  SurvNetExport4RIDOM
-#' plus the current timestamp wirtten into
-#' "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/")
+#' @param out The output file in xlsx format, defaults to NULL, meaning no
+#' output is written, but the object can be written to a file by the user
 #'
 #' @param problems If problematic entries should be reported into a file
 #' (a filename or path to a file) should be given. Which entries are regarded as
@@ -74,10 +73,7 @@
 create_Epidata <- function(
     LIMS_link_file =
       "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS_Export_auto/LIMS_Export.csv"                         ,
-         out =
-           paste0("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Import/",
-                  "SurvNetExport4RIDOM",
-                  format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), ".xlsx"),
+    out = NULL,
     SurvNet = import_SurvNet(build_query(Thema = "IMS"), ...),
     problems = NULL,
     type_of_problem = "non-matching-LIMS", ...
@@ -143,7 +139,7 @@ geo2ridom <- function(x){
                          "Legionellose" = "Produktiv_Legionella_pneumophila",
                          "Listeriose" = "Produktiv_Listeria_monocytogenes",
                          "Salmonellose" = "Produktiv_Salmonella_enterica",
-                         "MRSA" = "Produktiv_MRSA"),
+                         "MRSA, invasive Infektion" = "Produktiv_MRSA"),
       `Country of Isolation` = "Germany",
       `Lat/Long of Isolation` = geo2ridom(.data$centroid)
     ) %>%
@@ -174,7 +170,7 @@ geo2ridom <- function(x){
       .data$Outbreak, .data$`Country of Isolation`,
       .data$`Lat/Long of Isolation`, .data$Project, .data$Host,
       .data$`Source type`, .data$`Source subtype`, .data$`Specimen type`,
-      .data$`Eigentuemer_ID`
+      .data$`Eigentuemer_ID`, `.data$Datensatzkategorie`
     )
 }
 

@@ -24,14 +24,19 @@ library(luaRlp)
 Nach dem Laden unseres Pakets lässt sich die Funktion ohne weitere Argumente ausführen. 
 ```{r pseudoEx, eval=FALSE}
 library(luaRlp)
-create_Epidata()
+
+mein_output <- paste0("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Import/",
+                      "SurvNetExport4RIDOM", 
+                      format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), ".xlsx")
+
+create_Epidata(out=mein_output)
 ```
 
-Damit ist im Regelfall der R-Teil des Epi-Daten Imports erledigt. Dei erzeugten Daten (Default in Verzeichnis
-`O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Import/`) sind zum Einlesen in RIDOM Seqsphere 
-bereit. 
+
+Damit erhält die epidemiologischen Daten zum Einlesen in RIDOM Seqsphere innerhalb eins R-objektes. Wenn mittels der Option `out=` ein gültiger Dateipfad angegenben wird, werden die Daten in eine Datei geschrieben. Das Beispiel hier zeigt die "Standardablage" für solche Daten am LUA-RLP. 
 
 Im Folgenden stellt diese Vignette Details dar um das Prinzip der Datenflüsse zur erklären und um ggf. auftretende Fehler und Probleme zu beheben. 
+
 
 ## Konfiguration der SurvNet-Verbindung (ODBC DSN)
 
@@ -60,6 +65,7 @@ Zur korrekten Konfiguration der Datenquelle kontaktieren Sie bei Problemen bitte
 
 ## Hintergründe und Inspektion der Daten aus der SurvNet-Verbindung
 
+Wir lesen zunächst (wieder) in ein R-objekt ein. 
 
 ```{r topLevel}
 Epidata4Import <- create_Epidata()

@@ -8,23 +8,25 @@ The xlsx file written to "out" has the following columns:
 \describe{
   \item{Sample ID}{Character. As "Laborprobennummer" from LIMS}
   \item{Alias ID (s)}{Character. This is the \strong{merge key}! As
-  "Survnet" from SurvNet and as "Aktenzeichen" from LIMS.}
+  "Survnet" from SurvNet and as "Aktenzeichen" from LIMS. Prefixed with
+  Kürzel from geo_standards (merged via Eigetuemer_ID).}
   \item{Zip of Isolation}{Character. As Postleitzahl from LIMS}
   \item{IdRecord}{Character. Unchanged from SurvNet}
   \item{Collection Date}{Date. As Meldedatum from SurvNet}
   \item{Gesundheitsamt}{Character. Via merge based on
-  LK_ID from SurvNet (merge key) obtaining the Gesundheitsamt
-  variable from data("geo_standards")}
-  \item{Meldelandkreis}{Character. Unchanged from SurvNet}
+  Eigentuemer_ID from SurvNet (merge key) obtaining the Gesundheitsamt
+  variable from data("geo_standards").}
+  \item{Meldelandkreis}{Character. Based on LK_ID from SurvNet, clear names
+  via merge with data("geo_standards").}
   \item{MunicipalityKey}{Character. Unchanged from SurvNet}
   \item{Host Age (years)}{Numeric. As AgeComputed from SurvNet}
   \item{Host Sex}{Character. Recoded from Geschlecht from SurvNet}
-  \item{HospStatus}{Character. Recoded from HospitalisierungStatus from
+  \item{HospStatus}{Character.Recoded from HospitalisierungStatus from
   SurvNet}
   \item{VerstorbenStatus}{Character. Recoded from VerstorbenStatus from
   SurvNet}
   \item{Expositionsort}{Character. Derived from multiple exposure variables
-  from SurvNet (see ?luaRlp:::.combine_exposure)}
+  from SurvNet (see ?luaRlp:::.combine_exposure) in add_values()}
   \item{Outbreak}{Logical. Recoded from SurvNet by determining
   whether AusbruchInfo_InterneRef is filled}
   \item{Country of Isolation}{Character. Hard-coded "Germany".}
@@ -47,9 +49,7 @@ The xlsx file written to "out" has the following columns:
 create_Epidata(
   LIMS_link_file =
     "O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS_Export_auto/LIMS_Export.csv",
-  out =
-    paste0("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Import/",
-    "SurvNetExport4RIDOM", format(Sys.time(), "\%Y-\%m-\%d_\%H-\%M-\%S"), ".xlsx"),
+  out = NULL,
   SurvNet = import_SurvNet(build_query(Thema = "IMS"), ...),
   problems = NULL,
   type_of_problem = "non-matching-LIMS",
@@ -62,9 +62,8 @@ LUA Probennummern (3263-) and SurvNet IDs (Aktenzeichen with licence plate
 prefix), defaults to a path on our System on which automated LIMS exports are
 stored}
 
-\item{out}{The output file in xlsx format (defaults to  SurvNetExport4RIDOM
-plus the current timestamp wirtten into
-"O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/")}
+\item{out}{The output file in xlsx format, defaults to NULL, meaning no
+output is written, but the object can be written to a file by the user}
 
 \item{problems}{If problematic entries should be reported into a file
 (a filename or path to a file) should be given. Which entries are regarded as
