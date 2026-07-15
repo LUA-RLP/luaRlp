@@ -233,7 +233,7 @@ add_values <- function(df) {
                   TRUE ~ NA_character_
                 )
   ) %>%
-    dplyr::select(!starts_with("ExpKont"))  # Remove columns from ExpKont1 to ExpKont2
+    dplyr::select(!(ExpKont1:ExpKont2))  # Remove columns from ExpKont1 to ExpKont2
 }
 
 
