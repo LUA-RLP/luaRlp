@@ -57,13 +57,6 @@ Fragebogen_fuer_GAE <- function(  base_dir = "Z:/DFS-LUA-LD-Zusammenarbeit/LD-AB
   valid_prefix <- geo_standards$Kürzel %>%
     str_to_upper()
 
-  GA_info <- geo_standards %>%
-    mutate(
-      Eigentuemer = str_extract(Gesundheitsamt, "(?<=\\()[^()]+(?=\\))")
-    ) %>%
-    distinct(Eigentuemer, .keep_all = TRUE) %>%
-    select(Eigentuemer, Kürzel)
-
   #Valide Aktenzeichen (Präfix und Suffix) werden zusätzlich in zwei neue Spalten geschrieben
   data <- data %>%
     rowwise() %>%
@@ -83,10 +76,15 @@ Fragebogen_fuer_GAE <- function(  base_dir = "Z:/DFS-LUA-LD-Zusammenarbeit/LD-AB
 
   #Import der Tagen aus SurvNet zum Abgleich
   Abgleich <- import_SurvNet(build_query(Thema="SerovarSAL"))
+
+  GA_Info <- geo_standards %>%
+    distinct(Eigentuemer_ID, .keep_all = TRUE) %>%
+    select(Eigentuemer_ID, Kürzel)
+
   Abgleich <- Abgleich %>%
     left_join(
-      GA_info,
-      by = "Eigentuemer"
+      GA_Info,
+      by = "Eigentuemer_ID"
     ) %>%
     select(Aktenzeichen, Kürzel)
 
