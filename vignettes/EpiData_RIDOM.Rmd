@@ -19,11 +19,13 @@ Die Funktion `create_Epidata()` ist das zentrale Werkzeug zur Generierung eines 
 
 ```{r loadlib, include=FALSE}
 library(luaRlp)
+library(sf) # wird gebraucht für Geo-Daten
 ```
 
 Nach dem Laden unseres Pakets lässt sich die Funktion ohne weitere Argumente ausführen. 
 ```{r pseudoEx, eval=FALSE}
 library(luaRlp)
+library(sf)
 
 mein_output <- paste0("O:/Abteilung Humanmedizin (AHM)/Referat 32/32_6/14_EpiDaten/LIMS Import/",
                       "SurvNetExport4RIDOM", 

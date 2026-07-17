@@ -162,7 +162,8 @@ add_values <- function(df) {
   }
 
   if ("AusbruchInfo_InterneRef" %in% names(df)) {
-    Ausbruch = ifelse(!is.na(df$AusbruchInfo_InterneRef), 1, 0)
+    df$Ausbruch <- ifelse(!is.na(df$AusbruchInfo_InterneRef), 1, 0)
+    df$Ausbruch_ID <- df$AusbruchInfo_InterneRef
   }
 
   # Merge immer

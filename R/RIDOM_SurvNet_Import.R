@@ -79,7 +79,6 @@ create_Epidata <- function(
     type_of_problem = "non-matching-LIMS", ...
 ){
   SN <- add_values(SurvNet) %>%
- ##   .combine_exposure() %>%
     mutate(Aktenzeichen = gsub(" ", "", paste0(.data$Kürzel, " - ",
                                                .data$Aktenzeichen)))%>%
     .cleanup_RIDOM()
@@ -90,7 +89,9 @@ create_Epidata <- function(
     rename(`Sample ID` = .data$Laborprobennummer,
            `Alias ID (s)` =.data$Survnet,
            `Zip of Isolation` = .data$Postleitzahl)
-  write_xlsx(Out_EpiDaten, out)
+  if(!is.null(out)){
+    write_xlsx(Out_EpiDaten, out)
+  }
   ### optinal reporting of a problems-file
   if(!is.null(problems)){
     if(type_of_problem %in%(c("non-matching-LIMS"))){
@@ -135,7 +136,7 @@ geo2ridom <- function(x){
   data %>%
     mutate(
       `Project` = recode(.data$Datensatzkategorie,
-                         "EHEC" = "Produktiv_EHEC",
+                         "EHEC-Erkrankung" = "Produktiv_EHEC",
                          "Legionellose" = "Produktiv_Legionella_pneumophila",
                          "Listeriose" = "Produktiv_Listeria_monocytogenes",
                          "Salmonellose" = "Produktiv_Salmonella_enterica",
@@ -170,7 +171,7 @@ geo2ridom <- function(x){
       .data$Outbreak, .data$`Country of Isolation`,
       .data$`Lat/Long of Isolation`, .data$Project, .data$Host,
       .data$`Source type`, .data$`Source subtype`, .data$`Specimen type`,
-      .data$`Eigentuemer_ID`, `.data$Datensatzkategorie`
+      .data$`Eigentuemer_ID`, .data$`Datensatzkategorie`
     )
 }
 
