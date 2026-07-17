@@ -135,24 +135,25 @@ geo2ridom <- function(x){
 # Final dataset with cleaned and formatted variables
   data %>%
     mutate(
-      `Project` = recode(.data$Datensatzkategorie,
-                         "EHEC-Erkrankung" = "Produktiv_EHEC",
-                         "Legionellose" = "Produktiv_Legionella_pneumophila",
-                         "Listeriose" = "Produktiv_Listeria_monocytogenes",
-                         "Salmonellose" = "Produktiv_Salmonella_enterica",
-                         "MRSA, invasive Infektion" = "Produktiv_MRSA"),
+      `Project` = recode(.data$IdType,
+                         "121" = "Produktiv_EHEC",
+                         "135" = "Produktiv_EHEC",
+                         "138" = "Produktiv_Legionella_pneumophila",
+                         "140" = "Produktiv_Listeria_monocytogenes",
+                         "157" = "Produktiv_Salmonella_enterica",
+                         "179" = "Produktiv_MRSA", .default="XX_Problem_XX"),
       `Country of Isolation` = "Germany",
       `Lat/Long of Isolation` = geo2ridom(.data$centroid)
     ) %>%
     mutate(## everywhere but Legionella human host as default
-      `Host` = ifelse(Datensatzkategorie != "Legionellose", "Homo sapiens",
+      `Host` = ifelse(IdType != "138", "Homo sapiens", ## Legionellose
                       ""),
-      `Source type` = ifelse(Datensatzkategorie != "Legionellose",
+      `Source type` = ifelse(IdType != "138", ## Legionellose kann Wasser sein
                            "clinical/host-associated",
                            ""),
-      `Source subtype` = ifelse(Datensatzkategorie != "Legionellose", "human",
+      `Source subtype` = ifelse(IdType != "138", "human",
                                 ""),
-      `Specimen type` = ifelse(Datensatzkategorie %in% c("Salmonellose", "EHEC"),
+      `Specimen type` = ifelse(IdType %in% c("157", "121", "135"),
                                "stool",
                                "")
         ) %>%
