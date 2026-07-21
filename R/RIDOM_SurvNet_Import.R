@@ -78,7 +78,9 @@ create_Epidata <- function(
     problems = NULL,
     type_of_problem = "non-matching-LIMS", ...
 ){
-  SN <- add_values(SurvNet) %>%
+  SN <-
+    .add_Sero_Erreger(SurvNet) %>%
+    add_values() %>%
     mutate(Aktenzeichen = gsub(" ", "", paste0(.data$Kürzel, " - ",
                                                .data$Aktenzeichen)))%>%
     .cleanup_RIDOM()
@@ -172,7 +174,34 @@ geo2ridom <- function(x){
       .data$Outbreak, .data$`Country of Isolation`,
       .data$`Lat/Long of Isolation`, .data$Project, .data$Host,
       .data$`Source type`, .data$`Source subtype`, .data$`Specimen type`,
-      .data$`Eigentuemer_ID`, .data$`Datensatzkategorie`
+      .data$`Eigentuemer_ID`, .data$`Datensatzkategorie`, .data$`Erreger`
     )
 }
+
+
+
+.add_Sero <- function(SN){
+  ## Daten für serovar importieren
+  SAL <- import_SurvNet(build_query(Thema="SerovarSAL")) %>%
+    rename(Pathogen_ID_SAL = Pathogen_ID)
+  left_join(SN, SAL)
+}
+
+.add_Erreger <- function(SN){
+  #Daten für Erreger bei Enterobacterales importiere
+  EBC <- import_SurvNet(build_query(Thema="EBC")) %>%
+    rename(Pathogen_ID_EBC = Pathogen_ID)
+  left_join(SN, EBC)
+}
+
+.add_Sero_Erreger <-function(SN){
+  SN %>%
+    .add_Sero() %>%
+    .add_Erreger() %>%
+    mutate(
+      Pathogen_ID = coalesce(Pathogen_ID_SAL, Pathogen_ID_EBC)
+    ) %>%
+    select(-Pathogen_ID_SAL, -Pathogen_ID_EBC)
+}
+
 
