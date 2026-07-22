@@ -21,17 +21,17 @@ Fragebogen_fuer_GAE <- function(  base_dir = "Z:/DFS-LUA-LD-Zusammenarbeit/LD-AB
 
   # erste Zeile extrahieren und 2 Spalten entfernen
   header_row <- raw[1, ] |> unlist() |> as.character()
-  header_row_adjusted <- header_row[-c(3, 101)]
+  header_row_adjusted <- header_row[-c(3, 102)]
 
   # letzte Klammer extrahieren außer bei den letzten beiden Spalten
   new_names <- header_row_adjusted
-  new_names[1:100] <- str_match(header_row_adjusted[1:100], "\\(([^()]*)\\)\\s*$")[,2]
-  new_names[101] <- "contributionID"
-  new_names[102] <- "creation_date"
+  new_names[1:101] <- str_match(header_row_adjusted[1:101], "\\(([^()]*)\\)\\s*$")[,2]
+  new_names[102] <- "contributionID"
+  new_names[103] <- "creation_date"
 
   # Daten extrahieren und 2 Spalten entfernen
   data <- raw[-1, ]
-  data <- data %>% select(-c(3,101))
+  data <- data %>% select(-c(3,102))
 
   #Spaltennamen hinzufügen
   colnames(data) <- new_names
