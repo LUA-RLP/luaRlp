@@ -194,6 +194,15 @@ geo2ridom <- function(x){
     )
 }
 
+#' .add_Sero
+#'
+#' Füge Serovar für Salmonellen einer SurvNet-Abfrage hinzu
+#'
+#' @param SN die ursprünliche SurvNet Abfrage (Rohform, ohne add_values)
+#'
+#' @returns Ein kombinierte SuvNet Abfrage, die z.B. mit add_values() weiter be
+#' arbeitet weren kann
+#'
 .add_Sero <- function(SN){
   ## Daten für serovar importieren
   SAL <- import_SurvNet(build_query(Thema="SerovarSAL")) |>
@@ -201,6 +210,15 @@ geo2ridom <- function(x){
   left_join(SN, SAL)
 }
 
+#' .add_Erreger
+#'
+#' @param SN die ursprünliche SurvNet Abfrage (Rohform, ohne add_values)
+#'
+#' Füge Erreger-Art für Enterobacterales einer SurvNet-Abfrage hinzu
+#'
+#' @returns Ein kombinierte SuvNet Abfrage, die z.B. mit add_values() weiter be
+#' arbeitet weren kann
+#'
 .add_Erreger <- function(SN){
   #Daten für Erreger bei Enterobacterales importiere
   EBC <- import_SurvNet(build_query(Thema="EBC")) |>
@@ -208,6 +226,17 @@ geo2ridom <- function(x){
   left_join(SN, EBC)
 }
 
+#' .add_Sero_Erreger
+#'
+#' Füge Serovar (für Salmonellen) und Erreger-Art (für Enterobacterales) einer
+#' SurvNet-Abfrage hinzu. Die Informationen werden in einer einzigen Spalte
+#' "Pathogen_ID" gesammelt.
+#'
+#' @param SN die ursprünliche SurvNet Abfrage (Rohform, ohne add_values)
+#'
+#' @returns Ein kombinierte SuvNet Abfrage, die z.B. mit add_values() weiter be
+#' arbeitet weren kann
+#'
 .add_Sero_Erreger <-function(SN){
   SN |>
     .add_Sero() |>
