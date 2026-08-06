@@ -66,7 +66,6 @@
 #' @export
 #'
 #' @importFrom readr write_csv2
-#' @importFrom magrittr %>%
 #' @importFrom utils read.delim
 #' @importFrom writexl write_xlsx
 #'
@@ -78,29 +77,24 @@ create_Epidata <- function(
     problems = NULL,
     type_of_problem = "non-matching-LIMS", ...
 ){
-  SN <- add_values(SurvNet) %>%
-    mutate(Aktenzeichen = gsub(" ", "", paste0(.data$Kürzel, " - ",
-                                               .data$Aktenzeichen)))%>%
+  SN <-
+    .add_Sero_Erreger(SurvNet) |>
+    add_values() |>
+    mutate(Aktenzeichen = gsub(" ", "", paste0(Kürzel, " - ",
+                                               Aktenzeichen)))|>
     .cleanup_RIDOM()
   IDs <- read.delim(LIMS_link_file, sep = ";")
-  Out_EpiDaten <- inner_join(IDs, SN,
-                             by = c("Survnet" = "Aktenzeichen")) %>%
-    ## rename variables coming from the LIMS merger!
-    rename(`Sample ID` = .data$Laborprobennummer,
-           `Alias ID (s)` =.data$Survnet,
-           `Zip of Isolation` = .data$Postleitzahl)
+  Out_EpiDaten <- .merge_lims_survnet(lims = IDs, survnet = SN)
+  ## write output if out is given
   if(!is.null(out)){
-    write_xlsx(Out_EpiDaten, out)
+    write_xlsx(x = Out_EpiDaten, path = out)
   }
-  ### optinal reporting of a problems-file
+  ### optional reporting of a problems-file
   if(!is.null(problems)){
-    if(type_of_problem %in%(c("non-matching-LIMS"))){
-      p <- IDs %>%
-        filter(!Survnet %in% SN$Aktenzeichen)
-      write_csv2(p, problems)
-    }else{
-      stop("Choose a type of problem to report when requesting problems output")
-    }
+    .write_problem_report(problems = problems,
+                          type_of_problem = type_of_problem,
+                          lims = IDs,
+                          survnet = SN)
   }
   return(Out_EpiDaten)
 }
@@ -108,15 +102,40 @@ create_Epidata <- function(
 
 #' geo2ridom
 #'
-#' @param x a POINT geometry from sf
+#' @param x a POINT geometry list from sf
 #'
-#' @returns a RIDOM compatible geo-coordinate point
-geo2ridom <- function(x){
-  cento <- sapply(x, paste, collapse=", +")
-  paste0("+", cento)
+#' @returns a vector of RIDOM compatible geo-coordinate point
+geo2ridom <- function(x, digits = 4) {
+  coords <- sf::st_coordinates(x)
+  fmt <- paste0("%+.", digits, "f")
+  sprintf(paste(fmt, fmt, sep = ", "),
+          coords[, 2], coords[, 1])
 }
 
+#' write_problem_report
+#'
+#' @param problems
+#'
+#' @returns schreibt ein csv mit "Aktenzeichen", aus unsemewenn ein gultiger Pfad gegeben wird
+#'
+.write_problem_report <- function(problems, type_of_problem, lims, survnet){
+  if(type_of_problem %in%(c("non-matching-LIMS"))){
+    p <- lims |>
+      filter(!Survnet %in% survnet$Aktenzeichen)
+    write_csv2(p, problems)
+  }else{
+    stop("Choose a type of problem to report when requesting problems output")
+  }
+}
 
+.merge_lims_survnet <- function(lims, survnet){
+  inner_join(lims, survnet,
+             by = c("Survnet" = "Aktenzeichen")) |>
+    ## rename variables coming from the LIMS merger!
+    rename(`Sample ID` = Laborprobennummer,
+           `Alias ID (s)` =Survnet,
+           `Zip of Isolation` = Postleitzahl)
+}
 
 #' .cleanup_RIDOM
 #'
@@ -129,11 +148,10 @@ geo2ridom <- function(x){
 #' @return a tibble
 #'
 #' @import dplyr
-#' @importFrom magrittr %>%
 #'
 .cleanup_RIDOM <- function(data){
 # Final dataset with cleaned and formatted variables
-  data %>%
+  data |>
     mutate(
       `Project` = recode(.data$IdType,
                          "121" = "Produktiv_EHEC",
@@ -144,7 +162,7 @@ geo2ridom <- function(x){
                          "179" = "Produktiv_MRSA", .default="XX_Problem_XX"),
       `Country of Isolation` = "Germany",
       `Lat/Long of Isolation` = geo2ridom(.data$centroid)
-    ) %>%
+    ) |>
     mutate(## everywhere but Legionella human host as default
       `Host` = ifelse(IdType != "138", "Homo sapiens", ## Legionellose
                       ""),
@@ -156,23 +174,77 @@ geo2ridom <- function(x){
       `Specimen type` = ifelse(IdType %in% c("157", "121", "135"),
                                "stool",
                                "")
-        ) %>%
-    rename(`Collection Date` = .data$Meldedatum,
-           `Host Age (years)` = .data$AlterBerechnet,
-           `Host Sex` = .data$Geschlecht,
-           `HospStatus` = .data$HospitalisierungStatus,
-           `Outbreak` = .data$Ausbruch,
-           `Gesundheitsamt` = .data$Wohnort_GA) %>%
+        ) |>
+    rename(`Collection Date` = Meldedatum,
+           `Host Age (years)` = AlterBerechnet,
+           `Host Sex` = Geschlecht,
+           `HospStatus` = HospitalisierungStatus,
+           `Outbreak` = Ausbruch,
+           `Gesundheitsamt` = Wohnort_GA) |>
     select(
-      .data$Aktenzeichen,
-      .data$IdRecord,
-      .data$`Collection Date`, .data$Gesundheitsamt, .data$Meldelandkreis,
-      .data$MunicipalityKey, .data$`Host Age (years)`, .data$`Host Sex`,
-      .data$HospStatus, .data$VerstorbenStatus, .data$Expositionsort,
-      .data$Outbreak, .data$`Country of Isolation`,
-      .data$`Lat/Long of Isolation`, .data$Project, .data$Host,
-      .data$`Source type`, .data$`Source subtype`, .data$`Specimen type`,
-      .data$`Eigentuemer_ID`, .data$`Datensatzkategorie`
+      Aktenzeichen,
+      IdRecord,
+      `Collection Date`, Gesundheitsamt, Meldelandkreis,
+      MunicipalityKey, `Host Age (years)`, `Host Sex`,
+      HospStatus, VerstorbenStatus, Expositionsort,
+      Outbreak, `Country of Isolation`,
+      `Lat/Long of Isolation`, Project, Host,
+      `Source type`, `Source subtype`, `Specimen type`,
+      `Eigentuemer_ID`, `Datensatzkategorie`, `Erreger`
     )
 }
+
+#' .add_Sero
+#'
+#' Füge Serovar für Salmonellen einer SurvNet-Abfrage hinzu
+#'
+#' @param SN die ursprünliche SurvNet Abfrage (Rohform, ohne add_values)
+#'
+#' @returns Ein kombinierte SuvNet Abfrage, die z.B. mit add_values() weiter be
+#' arbeitet weren kann
+#'
+.add_Sero <- function(SN){
+  ## Daten für serovar importieren
+  SAL <- import_SurvNet(build_query(Thema="SerovarSAL")) |>
+    rename(Pathogen_ID_SAL = Pathogen_ID)
+  left_join(SN, SAL)
+}
+
+#' .add_Erreger
+#'
+#' @param SN die ursprünliche SurvNet Abfrage (Rohform, ohne add_values)
+#'
+#' Füge Erreger-Art für Enterobacterales einer SurvNet-Abfrage hinzu
+#'
+#' @returns Ein kombinierte SuvNet Abfrage, die z.B. mit add_values() weiter be
+#' arbeitet weren kann
+#'
+.add_Erreger <- function(SN){
+  #Daten für Erreger bei Enterobacterales importiere
+  EBC <- import_SurvNet(build_query(Thema="EBC")) |>
+    rename(Pathogen_ID_EBC = Pathogen_ID)
+  left_join(SN, EBC)
+}
+
+#' .add_Sero_Erreger
+#'
+#' Füge Serovar (für Salmonellen) und Erreger-Art (für Enterobacterales) einer
+#' SurvNet-Abfrage hinzu. Die Informationen werden in einer einzigen Spalte
+#' "Pathogen_ID" gesammelt.
+#'
+#' @param SN die ursprünliche SurvNet Abfrage (Rohform, ohne add_values)
+#'
+#' @returns Ein kombinierte SuvNet Abfrage, die z.B. mit add_values() weiter be
+#' arbeitet weren kann
+#'
+.add_Sero_Erreger <-function(SN){
+  SN |>
+    .add_Sero() |>
+    .add_Erreger() |>
+    mutate(
+      Pathogen_ID = coalesce(Pathogen_ID_SAL, Pathogen_ID_EBC)
+    ) |>
+    select(-Pathogen_ID_SAL, -Pathogen_ID_EBC)
+}
+
 
