@@ -102,15 +102,15 @@ create_Epidata <- function(
 
 #' geo2ridom
 #'
-#' @param x a POINT geometry from sf
+#' @param x a POINT geometry list from sf
 #'
-#' @returns a RIDOM compatible geo-coordinate point
-geo2ridom <- function(x){
-  cento <- sapply(x, paste, collapse=", +")
-  paste0("+", cento)
+#' @returns a vector of RIDOM compatible geo-coordinate point
+geo2ridom <- function(x, digits = 4) {
+  coords <- sf::st_coordinates(x)
+  fmt <- paste0("%+.", digits, "f")
+  sprintf(paste(fmt, fmt, sep = ", "),
+          coords[, 2], coords[, 1])
 }
-
-
 
 #' write_problem_report
 #'

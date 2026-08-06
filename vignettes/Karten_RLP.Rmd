@@ -1,0 +1,25 @@
+---
+title: "Karten_RLP"
+output: html_document
+vignette: >
+  %\VignetteIndexEntry{Karten_RLP}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Karten unseres schönen Bundeslandes zur Darstellung von Daten 
+
+Diese Vignette erklärt wie man mit hilfe des Pakets `luaRlp` und einigen 
+einfachen Kommandos Karten von Rheinland-Pfalz erstellt und darauf Daten 
+darstellt. 
+
+Zunächst laden wir die benötigten Pakete
+```{r}
+library(luaRlp)
+library(sf) ## für Geo-Daten und GIS-Fähigkeiten
+```
+
