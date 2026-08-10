@@ -7,10 +7,10 @@
 .write_problem_report(problems, type_of_problem, lims, survnet)
 }
 \arguments{
-\item{problems}{}
+\item{problems}{Ein Pfad zu einer (csv)-Datei in der problematische "Aktenzeichen" gegeben werden}
 }
 \value{
-schreibt ein csv mit "Aktenzeichen", aus unsemewenn ein gultiger Pfad gegeben wird
+schreibt ein csv mit "Aktenzeichen", aus wenn ein gültiger Pfad gegeben wird
 }
 \description{
 write_problem_report
