@@ -4,13 +4,13 @@
 \alias{geo2ridom}
 \title{geo2ridom}
 \usage{
-geo2ridom(x)
+geo2ridom(x, digits = 4)
 }
 \arguments{
-\item{x}{a POINT geometry from sf}
+\item{x}{a POINT geometry list from sf}
 }
 \value{
-a RIDOM compatible geo-coordinate point
+a vector of RIDOM compatible geo-coordinate point
 }
 \description{
 geo2ridom

@@ -114,9 +114,9 @@ geo2ridom <- function(x, digits = 4) {
 
 #' write_problem_report
 #'
-#' @param problems
+#' @param problems Ein Pfad zu einer (csv)-Datei in der problematische "Aktenzeichen" gegeben werden
 #'
-#' @returns schreibt ein csv mit "Aktenzeichen", aus unsemewenn ein gultiger Pfad gegeben wird
+#' @returns schreibt ein csv mit "Aktenzeichen", aus wenn ein gültiger Pfad gegeben wird
 #'
 .write_problem_report <- function(problems, type_of_problem, lims, survnet){
   if(type_of_problem %in%(c("non-matching-LIMS"))){

@@ -7,7 +7,7 @@
 #'              Zusätzlich kann die Periode der Abfrage unabhängig davon festgelegt werden.
 #'              Das Thema Tageskontrolle wird gewöhnlich mit der Periode last2weeks kombiniert
 #'              Das Thema IMS_RIDOM wird gewöhnlich mit der Periode IMS_since_2023 kombiniert.
-#' @param Thema Auswahl zwischen alle, Tageskontrolle, VHF, WBK, Arboviren, ZoonotischeINV, SerovarSAL, Influenza, COVID19, RSV, IMS_RIDOM
+#' @param Thema Auswahl zwischen alle, Tageskontrolle, VHF, WBK, Arboviren, ZoonotischeINV, SerovarSAL, Influenza, COVID19, RSV, IMS, EBC und LEG
 #' @param Periode Auswahl zwischen alle, last2weeks, thisyear, last2years, last5years, last10years, IMS_since_2023
 #'
 #' @return Ausgabe wird in der Funktion import_SurvNet verwendet.
