@@ -11,7 +11,8 @@ build_query(
 )
 }
 \arguments{
-\item{Thema}{Auswahl zwischen alle, Tageskontrolle, VHF, WBK, Arboviren, ZoonotischeINV, SerovarSAL, Influenza, COVID19, RSV, IMS, EBC und LEG}
+\item{Thema}{Auswahl zwischen alle, Tageskontrolle, VHF, WBK, Arboviren, ZoonotischeINV, SerovarSAL,
+Influenza, COVID19, RSV, IMS, EBC und LEG}
 
 \item{Periode}{Auswahl zwischen alle, last2weeks, thisyear, last2years, last5years, last10years, IMS_since_2023}
 }
