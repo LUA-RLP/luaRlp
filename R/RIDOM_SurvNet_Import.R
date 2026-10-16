@@ -163,18 +163,6 @@ geo2ridom <- function(x, digits = 4) {
       `Country of Isolation` = "Germany",
       `Lat/Long of Isolation` = geo2ridom(.data$centroid)
     ) |>
-    mutate(## everywhere but Legionella human host as default
-      `Host` = ifelse(IdType != "138", "Homo sapiens", ## Legionellose
-                      ""),
-      `Source type` = ifelse(IdType != "138", ## Legionellose kann Wasser sein
-                           "clinical/host-associated",
-                           ""),
-      `Source subtype` = ifelse(IdType != "138", "human",
-                                ""),
-      `Specimen type` = ifelse(IdType %in% c("157", "121", "135"),
-                               "stool",
-                               "")
-        ) |>
     rename(`Collection Date` = Meldedatum,
            `Host Age (years)` = AlterBerechnet,
            `Host Sex` = Geschlecht,
@@ -245,6 +233,12 @@ geo2ridom <- function(x, digits = 4) {
       Pathogen_ID = coalesce(Pathogen_ID_SAL, Pathogen_ID_EBC)
     ) |>
     select(-Pathogen_ID_SAL, -Pathogen_ID_EBC)
+}
+
+.add_PnNK <- function(){
+
+
+
 }
 
 
